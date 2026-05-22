@@ -1,11 +1,11 @@
 __pycache__/
 *.pyc
-*.pyo
-.env
-.venv/
 venv/
+.env
 data/raw/
 data/processed/
 logs/*.log
-*.egg-info/
 .DS_Store
+test_edgar*.py
+parse_nport*.py
+EOF
