@@ -1,0 +1,83 @@
+# CLO Trustee Report Scraper Configuration
+
+database:
+  path: "data/clo_data.db"
+
+export:
+  csv_dir: "data/exports/csv"
+  excel_dir: "data/exports/excel"
+
+scraper:
+  # Delay between requests (seconds) to be respectful
+  request_delay: 2.0
+  max_retries: 3
+  timeout: 30
+  user_agent: "CLO-Research-Bot/1.0"
+
+  # Raw report download directory
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+
+trustees:
+  us_bank:
+    enabled: true
+    base_url: "https://www.usbank.com/corporate-and-commercial-banking/corporate-trust/structured-finance"
+    # US Bank's CLO trustee portal - report listings
+    report_index_url: "https://pivot.usbank.com/reporting"
+
+  bny_mellon:
+    enabled: true
+    base_url: "https://gctinvestorreporting.bnymellon.com"
+
+  computershare:
+    enabled: false
+    base_url: "https://www.computershare.com/corporate/investor-relations"
+
+  sec_edgar:
+    enabled: true
+    base_url: "https://efts.sec.gov/LATEST/search-index"
+    # SEC full-text search for CLO-related filings (10-D, ABS-15G, etc.)
+    filing_types:
+      - "10-D"       # ABS periodic reports
+      - "ABS-15G"    # Asset-backed securities annual reports
+      - "FWP"        # Free writing prospectus (often has deal supplements)
+
+# Fields to extract from trustee reports
+extraction:
+  deal_info:
+    - deal_name
+    - manager
+    - trustee
+    - original_close_date
+    - reinvestment_end_date
+    - legal_maturity
+    - deal_size_mm
+
+  oc_ic_tests:
+    - senior_oc_test
+    - senior_oc_trigger
+    - senior_ic_test
+    - senior_ic_trigger
+    - mezzanine_oc_test
+    - mezzanine_oc_trigger
+    - mezzanine_ic_test
+    - mezzanine_ic_trigger
+
+  collateral_quality:
+    - warf                # Weighted Average Rating Factor
+    - was                 # Weighted Average Spread
+    - diversity_score
+    - wal                 # Weighted Average Life
+    - collateral_par
+    - defaulted_par
+    - ccc_bucket_pct
+
+  waterfall:
+    - interest_proceeds
+    - principal_proceeds
+    - equity_distribution
+    - reinvestment_amount
+
+logging:
+  level: "INFO"
+  file: "logs/scraper.log"
