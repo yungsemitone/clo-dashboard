@@ -201,12 +201,12 @@ class NPORTScraper:
         for fund in funds:
             logger.info(f"Processing {fund['name']}...")
             try:
-                filings = self._get_filings(fund["cik"], "NPORT-P", count=2)
+                filings = self._get_filings(fund["cik"], "NPORT-P", count=6)
                 if not filings:
                     logger.warning(f"No NPORT-P filings for {fund['name']}")
                     continue
 
-                for filing in filings[:1]:
+                for filing in filings[:4]:  # Last 4 quarterly filings
                     raw_xml = self._download_raw_xml(fund, filing)
                     if raw_xml:
                         holdings = self._parse_xml(raw_xml, fund, filing)

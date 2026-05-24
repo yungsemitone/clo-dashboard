@@ -354,5 +354,54 @@ if st.session_state[summary_key]:
 
     st.markdown("")
 
+# --- Historical Filings ---
+all_filing_dates = sorted(
+    set(h.filing_date for h, _ in holdings if h.filing_date),
+    reverse=True,
+)
+
+# Remove the latest (already shown above)
+historical_dates = [d for d in all_filing_dates if d != filing_date]
+
+if historical_dates:
+    st.divider()
+    st.subheader("📁 Historical Filings")
+    st.caption("Click to view data from a previous filing period")
+
+    for hist_date in historical_dates:
+        hist_date_str = hist_date.strftime("%B %d, %Y")
+        hist_quarter = hist_date.strftime("%B %Y")
+
+        # Count positions for this filing date
+        hist_count = sum(1 for h, _ in holdings if h.filing_date == hist_date)
+
+        # Quick stats for this period
+        hist_rows = [(h, d) for h, d in holdings if h.filing_date == hist_date]
+        hist_par = sum(h.par_amount or 0 for h, _ in hist_rows)
+        hist_mv = sum(h.market_value or 0 for h, _ in hist_rows)
+        hist_price = (hist_mv / hist_par * 100) if hist_par > 0 else 0
+
+        st.markdown(f"""
+        <div style="background: white; border: 1px solid #E0E0E0; border-radius: 10px;
+                    padding: 1.2rem; margin: 0.5rem 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-size: 1rem; font-weight: 600; color: #333;">
+                        NPORT-P — {hist_quarter}
+                    </div>
+                    <div style="font-size: 0.8rem; color: #888; margin-top: 3px;">
+                        Filed {hist_date_str} · {hist_count} holdings ·
+                        Par ${hist_par / 1e6:,.0f}M · Avg Price {hist_price:.1f}¢
+                    </div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.button(f"View {hist_quarter} Filing", key=f"hist_{fund_ticker}_{hist_date}", use_container_width=True):
+            st.session_state["detail_fund"] = fund_ticker
+            st.session_state["detail_date"] = str(hist_date)
+            st.switch_page("pages/5_Filing_Detail.py")
+
 st.divider()
 st.caption("All data sourced from SEC EDGAR NPORT-P filings.")
