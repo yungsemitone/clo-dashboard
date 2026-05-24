@@ -237,24 +237,122 @@ full_display = full_display.rename(columns={
 
 st.dataframe(full_display, use_container_width=True, hide_index=True, height=500)
 
-# --- Source filing links ---
+# --- Source Filings ---
 st.divider()
-st.subheader("📄 Source Filings")
-st.caption("Links to the actual NPORT-P filings on SEC EDGAR")
+st.subheader("📄 Source Filing")
 
 cik = fund["cik"]
-cik_clean = cik.lstrip("0")
+edgar_nport_url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik}&type=NPORT-P&dateb=&owner=include&count=10"
 
-# EDGAR company page
-edgar_company = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik}&type=NPORT-P&dateb=&owner=include&count=10"
-edgar_filings = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik}&type=NPORT-P&dateb=&owner=include&count=40&search_text=&action=getcompany"
+filing_date_str = filing_date.strftime("%B %d, %Y") if filing_date else "Unknown"
+filing_quarter = filing_date.strftime("%B %Y") if filing_date else ""
 
-if filing_date:
-    st.markdown(f"**Latest filing used:** {filing_date.strftime('%B %d, %Y')}")
+# Styled filing card
+st.markdown(f"""
+<div style="background: white; border: 1px solid #E0E0E0; border-radius: 10px;
+            padding: 1.5rem; margin: 1rem 0;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <div style="font-size: 1.1rem; font-weight: 600; color: #1B4D3E;">
+                NPORT-P — {filing_quarter}
+            </div>
+            <div style="font-size: 0.85rem; color: #888; margin-top: 4px;">
+                Filed {filing_date_str} · {n_positions} holdings · SEC EDGAR
+            </div>
+        </div>
+        <div style="background: #E8F5E9; color: #1B4D3E; padding: 4px 12px;
+                    border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
+            Latest
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-st.markdown(f"[View all {fund['ticker']} NPORT-P filings on EDGAR]({edgar_company})")
-st.markdown(f"[{fund['ticker']} EDGAR company page](https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik}&type=&dateb=&owner=include&count=40)")
-st.markdown(f"[{fund['ticker']} on SEC EDGAR (JSON API)](https://data.sec.gov/submissions/CIK{cik}.json)")
+# Toggle summary view
+summary_key = f"show_summary_{fund_ticker}"
+if summary_key not in st.session_state:
+    st.session_state[summary_key] = False
+
+if st.button("📋 View Filing Summary", use_container_width=True, key=f"btn_{fund_ticker}"):
+    st.session_state[summary_key] = not st.session_state[summary_key]
+
+if st.session_state[summary_key]:
+    st.markdown("---")
+
+    # --- Generate summary paragraph ---
+    top_mgr = df.groupby("manager")["par_amount"].sum().nlargest(3)
+    top_mgr_names = ", ".join(top_mgr.index[:2]) + f", and {top_mgr.index[2]}" if len(top_mgr) >= 3 else " and ".join(top_mgr.index)
+
+    priced_df = df.dropna(subset=["implied_price"])
+    above_50 = len(priced_df[priced_df["implied_price"] >= 50])
+    below_20 = len(priced_df[priced_df["implied_price"] < 20])
+
+    # Largest position
+    largest = df.iloc[0]
+    largest_name = largest["deal_name"]
+    largest_par = largest["par_amount"] / 1e6
+
+    summary = (
+        f"{fund['name']} reported {n_positions} CLO positions across {n_managers} managers "
+        f"in its NPORT-P filing dated {filing_date_str}. The portfolio has a total par value of "
+        f"${total_par / 1e6:,.1f}M with an aggregate market value of ${total_mv / 1e6:,.1f}M, "
+        f"implying a weighted average price of {avg_price:.1f} cents per dollar of par. "
+        f"The largest manager exposures are {top_mgr_names}, which together account for "
+        f"${top_mgr.sum() / 1e6:,.0f}M in par. "
+        f"The fund's largest single position is {largest_name} at ${largest_par:,.1f}M par. "
+    )
+
+    if above_50 > 0 or below_20 > 0:
+        summary += (
+            f"Across priced positions, {above_50} are marked above 50 cents "
+            f"and {below_20} are marked below 20 cents, "
+        )
+        if below_20 > above_50:
+            summary += "indicating the portfolio skews toward deeply discounted equity tranches."
+        elif above_50 > below_20:
+            summary += "indicating a portfolio weighted toward performing equity."
+        else:
+            summary += "reflecting a mix of performing and distressed positions."
+
+    st.markdown(f"""
+    <div style="background: #F8FAF9; border-left: 4px solid #1B4D3E;
+                padding: 1rem 1.2rem; border-radius: 0 6px 6px 0;
+                line-height: 1.7; font-size: 0.95rem; color: #333;">
+        {summary}
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("")
+
+    # --- Key stats (just a few, since detail is elsewhere) ---
+    st.markdown("**Key Metrics**")
+    kcol1, kcol2, kcol3, kcol4 = st.columns(4)
+    kcol1.metric("Positions", n_positions)
+    kcol2.metric("Avg Price", f"{avg_price:.1f}¢")
+
+    # Concentration: top 5 managers % of portfolio
+    top5_par = df.groupby("manager")["par_amount"].sum().nlargest(5).sum()
+    top5_pct = (top5_par / total_par * 100) if total_par > 0 else 0
+    kcol3.metric("Top 5 Mgr Concentration", f"{top5_pct:.0f}%")
+
+    # Median price
+    median_price = priced_df["implied_price"].median() if not priced_df.empty else 0
+    kcol4.metric("Median Price", f"{median_price:.1f}¢")
+
+    st.markdown("")
+
+    # --- EDGAR button ---
+    st.markdown(f"""
+    <a href="{edgar_nport_url}" target="_blank" style="text-decoration: none;">
+        <div style="background: #1B4D3E; color: white; padding: 12px 24px;
+                    border-radius: 8px; text-align: center; font-weight: 600;
+                    font-size: 0.95rem; margin-top: 8px; cursor: pointer;">
+            View on SEC EDGAR →
+        </div>
+    </a>
+    """, unsafe_allow_html=True)
+
+    st.markdown("")
 
 st.divider()
 st.caption("All data sourced from SEC EDGAR NPORT-P filings.")
