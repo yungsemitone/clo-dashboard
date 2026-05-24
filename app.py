@@ -18,6 +18,8 @@ st.markdown("""<style>
     .block-container { padding-top: 1.5rem; }
     div[data-testid="stSidebar"] { background: #1B4D3E; }
     div[data-testid="stSidebar"] * { color: white !important; }
+    [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
+    [data-testid="stSidebarNav"] li:has(span:contains("Filing Detail")) { display: none; }
 </style>""", unsafe_allow_html=True)
 
 

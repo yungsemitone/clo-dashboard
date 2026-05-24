@@ -31,9 +31,21 @@ if not deals:
     st.warning("No deals in the database yet.")
     st.stop()
 
-deal_options = {f"{d.manager}  —  {d.deal_name}": d.id for d in deals}
-selected_label = st.selectbox("Select a deal", list(deal_options.keys()))
-deal_id = deal_options[selected_label]
+# Two-step selection: Manager first, then Deal
+managers = sorted(set(d.manager for d in deals))
+
+sel_col1, sel_col2 = st.columns(2)
+
+with sel_col1:
+    selected_manager = st.selectbox("Select a manager", managers)
+
+manager_deals = [d for d in deals if d.manager == selected_manager]
+
+with sel_col2:
+    deal_options = {d.deal_name: d.id for d in manager_deals}
+    selected_deal_name = st.selectbox("Select a deal", list(deal_options.keys()))
+
+deal_id = deal_options[selected_deal_name]
 deal = session.query(Deal).get(deal_id)
 
 holdings = (
