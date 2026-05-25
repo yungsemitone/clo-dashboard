@@ -8,4 +8,4 @@ logs/*.log
 .DS_Store
 test_edgar*.py
 parse_nport*.py
-EOF
+EOF.streamlit/secrets.toml
