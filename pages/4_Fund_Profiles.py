@@ -15,7 +15,14 @@ import yaml
 from pathlib import Path
 
 st.set_page_config(page_title="Fund Profiles", page_icon="🏛️", layout="wide")
-st.markdown("<style>.block-container { padding-top: 1.5rem; }</style>", unsafe_allow_html=True)
+
+from src.auth import check_password
+if not check_password():
+    st.stop()
+st.markdown("""<style>
+    .block-container { padding-top: 1.5rem; }
+    [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
+</style>""", unsafe_allow_html=True)
 
 
 @st.cache_resource

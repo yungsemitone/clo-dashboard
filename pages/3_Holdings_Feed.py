@@ -11,8 +11,13 @@ from pathlib import Path
 
 st.set_page_config(page_title="Holdings Feed", page_icon="📰", layout="wide")
 
+from src.auth import check_password
+if not check_password():
+    st.stop()
+
 st.markdown("""<style>
     .block-container { padding-top: 1.5rem; }
+    [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
     .holding-card {
         background: white; border: 1px solid #E0E0E0;
         border-radius: 8px; padding: 1.2rem; margin-bottom: 0.8rem;

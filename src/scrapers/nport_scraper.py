@@ -148,7 +148,7 @@ MANAGER_MAP = {
     "zais": "ZAIS Group",
     "york clo": "York Capital",
 
-    # Eagle Point proprietary CLOs (all use "Park" names)
+    # Eagle Point proprietary CLOs (all "Park" names + related)
     "basswood park": "Eagle Point Credit",
     "bear mountain park": "Eagle Point Credit",
     "belmont park": "Eagle Point Credit",
@@ -157,19 +157,41 @@ MANAGER_MAP = {
     "kings park": "Eagle Point Credit",
     "whetstone park": "Eagle Point Credit",
     "wellman park": "Eagle Point Credit",
-    "myers park": "Blackstone",
     "harvest park": "Eagle Point Credit",
+    "catskill park": "Eagle Point Credit",
+    "clonkeen park": "Eagle Point Credit",
+    "danby park": "Eagle Point Credit",
+    "dewolf park": "Eagle Point Credit",
+    "franklin park": "Eagle Point Credit",
+    "lake george park": "Eagle Point Credit",
+    "lodi park": "Eagle Point Credit",
+    "meacham park": "Eagle Point Credit",
+    "milford park": "Eagle Point Credit",
+    "niagra park": "Eagle Point Credit",
+    "nyack park": "Eagle Point Credit",
+    "peace park": "Eagle Point Credit",
+    "pixley park": "Eagle Point Credit",
+    "point au roche": "Eagle Point Credit",
+    "rockland park": "Eagle Point Credit",
+    "thompson park": "Eagle Point Credit",
+    "unity-peace park": "Eagle Point Credit",
+    "wehle park": "Eagle Point Credit",
+    "wild park": "Eagle Point Credit",
+    "wildpk": "Eagle Point Credit",
+    "wpark": "Eagle Point Credit",
+    "myers park": "Blackstone",
 
     # Other common platforms
     "alm loan": "Apollo Global Management",
-    "alf": "Apollo Global Management",
+    "alm ": "Apollo Global Management",
+    "alf ": "Apollo Global Management",
     "allegro clo": "AXA Investment Managers",
+    "alleg": "AXA Investment Managers",
     "axa": "AXA Investment Managers",
-    "bnp paribas": "BNP Paribas",
-    "deutsche bank": "Deutsche Bank",
     "eaton vance": "Eaton Vance / Morgan Stanley",
+    "eaton": "Eaton Vance / Morgan Stanley",
     "guggenheim": "Guggenheim Partners",
-    "ing": "ING Capital",
+    "ing ": "ING Capital",
     "jpmorgan": "JPMorgan",
     "lakeside park": "Lakeside Park CLO Mgmt",
     "lmf": "LibreMax Capital",
@@ -183,6 +205,114 @@ MANAGER_MAP = {
     "thl credit": "THL Credit",
     "t. rowe": "T. Rowe Price",
     "t rowe": "T. Rowe Price",
+    "galaxy": "PineBridge Investments",
+    "ammc": "American Money Management",
+    "american money": "American Money Management",
+    "acis clo": "DWS Group",
+    "avery point": "Bain Capital Credit",
+    "flatiron clo": "NYL Investors",
+    "race point": "Bain Capital Credit",
+    "recette": "Recette CLO Management",
+    "castle lake": "Castle Lake Capital",
+    "green harbour": "Green Harbour Capital",
+
+    # CUSIP-style abbreviations (from NPORT title fields used as names)
+    "anchc": "Anchorage Capital",
+    "apexc": "Apex Credit Partners",
+    "apex credit": "Apex Credit Partners",
+    "atclo": "Ares Management",
+    "awpt": "Elevation CLO Management",
+    "babsn": "Barings",
+    "bally": "Ballyrock Investment Advisors",
+    "batln": "Brigade Capital",
+    "bluem": "BlueMountain Capital",
+    "brdgs": "Bridge Street Capital",
+    "bwcap": "Blackstone",
+    "canyc": "Canyon Partners",
+    "cgms": "Carlyle Group",
+    "crowpt": "Crown Point Capital",
+    "crown point": "Crown Point Capital",
+    "drslf": "PGIM Fixed Income",
+    "empwr": "Empower CLO Management",
+    "empower clo": "Empower CLO Management",
+    "gall": "Gallatin CLO Management",
+    "gnrt": "Generate Advisors",
+    "harv": "Harvest CLO Management",
+    "icg ": "Intermediate Capital Group",
+    "icg us": "Intermediate Capital Group",
+    "invco": "Invesco",
+    "jtwn": "Jamestown CLO Management",
+    "kllm": "KKR Credit Advisors",
+    "mido": "MidOcean Credit Partners",
+    "midocc": "MidOcean Credit Partners",
+    "mp clo": "Credit Suisse Asset Mgmt",
+    "mp20": "Credit Suisse Asset Mgmt",
+    "mp23": "Credit Suisse Asset Mgmt",
+    "nmc ": "New Mountain Capital",
+    "ofsi": "OFS Capital Management",
+    "pkblu": "Park Blue CLO Management",
+    "park blue": "Park Blue CLO Management",
+    "ppmc": "Palmer Square Capital",
+    "reg19": "Napier Park Global Capital",
+    "rockt": "Benefit Street Partners",
+    "rr ": "Redding Ridge Asset Management",
+    "sndpt": "Sound Point Capital",
+    "speak": "Signal Peak Capital",
+    "stcr": "Steele Creek Investment Mgmt",
+    "trnts": "Trinitas Capital Management",
+    "vibr": "Vibrant CLO Management",
+    "vibrant": "Vibrant CLO Management",
+    "welf": "Wellfleet Credit Partners",
+    "zclo": "ZAIS Group",
+
+    # Deal platforms used as manager names
+    "venture": "MJX Asset Management",
+    "marathon clo": "Marathon Asset Management",
+    "marathon ": "Marathon Asset Management",
+    "shackleton": "Alcentra / BNY Mellon",
+    "telos clo": "Telos CLO Management",
+    "telos ": "Telos CLO Management",
+    "tralee": "Tralee CLO Management",
+    "lcm ": "LCM Partners",
+    "1988 clo": "1988 Capital Management",
+    "37 capital": "37 Capital CLO Management",
+    "agl clo": "AGL Credit Management",
+    "agl ": "AGL Credit Management",
+    "aig clo": "AIG",
+    "atlas senior": "Crescent Capital",
+    "aqueduct": "Aqueduct Capital Group",
+    "aurium": "Spire Partners",
+    "avoca": "KKR Credit Advisors",
+    "bardin hill": "Bardin Hill Investment Group",
+    "brant point": "Brant Point CLO Management",
+    "bridge street": "Bridge Street Capital",
+    "california street": "Blue Owl Capital",
+    "carval": "CarVal Investors",
+    "cathedral lake": "Cathedral Lake CLO Management",
+    "churchill": "Churchill Asset Management",
+    "cqs": "CQS Investment Management",
+    "cutwater": "Cutwater Asset Management",
+    "fortress": "Fortress Investment Group",
+    "harbourview": "HarbourView CLO Management",
+    "henley": "Henley CLO Management",
+    "jefferson mill": "Jefferson Mill CLO Management",
+    "kennedy lewis": "Kennedy Lewis Investment Management",
+    "lake shore": "Lake Shore CLO Management",
+    "mountain view": "Seix Investment Advisors",
+    "muzinich": "Muzinich & Co",
+    "ocp euro": "Onex Credit Partners",
+    "polus": "Polus Capital Management",
+    "post clo": "Post Advisory Group",
+    "rad clo": "Rad CLO Management",
+    "rad ": "Rad CLO Management",
+    "riserva": "Riserva CLO Management",
+    "bbam": "BBAM Partners",
+
+    # Generic catch-alls
+    "bnp paribas": "BNP Paribas",
+    "deutsche bank": "Deutsche Bank",
+    "morgan stanley": "Morgan Stanley",
+    "wells fargo": "Wells Fargo",
 }
 
 
@@ -353,8 +483,7 @@ class NPORTScraper:
             except ValueError:
                 val = 0
 
-            deal_name = title if title else name
-            deal_name = re.sub(r'\s+', ' ', deal_name).strip()
+            deal_name = self._clean_deal_name(name, title)
             manager = self._normalize_manager(name)
 
             holdings.append({
@@ -389,3 +518,48 @@ class NPORTScraper:
 
         # If no match, return cleaned name as-is
         return name
+
+    @staticmethod
+    def _clean_deal_name(issuer_name: str, title: str) -> str:
+        """Build a clean, readable deal name from NPORT issuer name and title."""
+        title = re.sub(r'\s+', ' ', title).strip()
+        issuer = issuer_name.strip()
+
+        # If title is empty or generic, use issuer name
+        generic_titles = [
+            "clo income note", "clo subordinated note", "clo equity",
+            "subordinated note", "income note", "class m-1 note",
+            "class m-2 note",
+        ]
+        if not title or title.lower().strip() in generic_titles:
+            return issuer
+
+        # If title looks like a proper deal name (contains "CLO", "Ltd", "Fund",
+        # "Funding" in mixed case), use it as-is but strip trailing dates
+        proper_keywords = ["CLO", "Ltd", "Fund", "Funding", "Trust", "Credit"]
+        if any(kw in title for kw in proper_keywords):
+            # Strip trailing maturity dates like "07/28/2031" or "01/20/2038"
+            cleaned = re.sub(r'\s+\d{2}/\d{2}/\d{4}\s*$', '', title)
+            return cleaned.strip()
+
+        # If title is a CUSIP-style abbreviation (all caps + numbers),
+        # build name from issuer + year from title
+        if re.match(r'^[A-Z]{2,8}\d?\s+\d{4}', title):
+            # Extract year and series from the title
+            year_match = re.search(r'(\d{4}[-]?\d{0,3}[A-Za-z]*)', title)
+            year_part = year_match.group(1) if year_match else ""
+
+            # Clean the issuer name
+            clean_issuer = issuer
+            for suffix in ["Ltd", "Ltd.", "LLC", "LP", "Inc", "Inc.",
+                           "LTD", ", Ltd", ", LLC"]:
+                if clean_issuer.endswith(suffix):
+                    clean_issuer = clean_issuer[:-len(suffix)].strip().rstrip(",").strip()
+
+            if year_part:
+                return f"{clean_issuer} {year_part}"
+            return clean_issuer
+
+        # Fallback: use title but strip dates
+        cleaned = re.sub(r'\s+\d{2}/\d{2}/\d{4}\s*$', '', title)
+        return cleaned.strip() if cleaned.strip() else issuer

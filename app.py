@@ -14,6 +14,10 @@ from src.models.schema import Deal, FundHolding
 st.set_page_config(page_title="CLO Dashboard", page_icon="📊", layout="wide",
                    initial_sidebar_state="expanded")
 
+from src.auth import check_password
+if not check_password():
+    st.stop()
+
 st.markdown("""<style>
     .block-container { padding-top: 1.5rem; }
     div[data-testid="stSidebar"] { background: #1B4D3E; }
