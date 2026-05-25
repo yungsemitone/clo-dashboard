@@ -26,10 +26,13 @@ st.markdown("""<style>
     div[data-testid="stSidebar"] * { color: white !important; }
     [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
     [data-testid="stSidebarNav"] li:has(span:contains("Filing Detail")) { display: none; }
+    header { display: none !important; }
+    .stAppToolbar { display: none !important; }
     [data-testid="stToolbar"] { display: none !important; }
     .stDeployButton { display: none !important; }
+    iframe[title="streamlit_github_button"] { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
-    header[data-testid="stHeader"] { visibility: hidden; height: 0; }
+    #stDecoration { display: none !important; }
 </style>""", unsafe_allow_html=True)
 
 
