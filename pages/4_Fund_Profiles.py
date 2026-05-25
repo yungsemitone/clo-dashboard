@@ -219,15 +219,20 @@ with top_col:
 with bot_col:
     st.subheader("Deepest Discounts")
     priced = df.dropna(subset=["implied_price"])
-    priced = priced[priced["implied_price"] > 0]
-    bottom = priced.nsmallest(10, "implied_price")[["deal_name", "manager", "par_amount", "implied_price"]].copy()
-    bottom["par_amount"] = (bottom["par_amount"] / 1e6).round(2)
-    bottom["implied_price"] = bottom["implied_price"].round(1)
-    bottom = bottom.rename(columns={
-        "deal_name": "Deal", "manager": "Manager",
-        "par_amount": "Par ($M)", "implied_price": "Price (¢)",
-    })
-    st.dataframe(bottom, use_container_width=True, hide_index=True)
+    written_off = priced[priced["implied_price"] < 1]
+    distressed = priced[priced["implied_price"] >= 1]
+    if not distressed.empty:
+        bottom = distressed.nsmallest(10, "implied_price")[["deal_name", "manager", "par_amount", "implied_price"]].copy()
+        bottom["par_amount"] = (bottom["par_amount"] / 1e6).round(2)
+        bottom["implied_price"] = bottom["implied_price"].round(1)
+        bottom = bottom.rename(columns={
+            "deal_name": "Deal", "manager": "Manager",
+            "par_amount": "Par ($M)", "implied_price": "Price (¢)",
+        })
+        st.dataframe(bottom, use_container_width=True, hide_index=True)
+    if len(written_off) > 0:
+        wo_par = written_off["par_amount"].sum() / 1e6
+        st.caption(f"{len(written_off)} positions (${wo_par:,.1f}M par) marked at near-zero value")
 
 # --- Full holdings table ---
 st.divider()
