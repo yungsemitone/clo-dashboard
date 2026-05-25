@@ -13,4 +13,4 @@ port = 8501
 gatherUsageStats = false
 
 [client]
-toolbarMode = "viewer"
+toolbarMode = "minimal"
