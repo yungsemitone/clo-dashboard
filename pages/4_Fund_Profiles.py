@@ -1,3 +1,5 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 Fund Profiles — deep dive into each CLO equity fund's portfolio.
 Shows positions, stats, manager concentration, pricing, and links to source filings.

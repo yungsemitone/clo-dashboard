@@ -1,3 +1,5 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """Cross-Fund Comparison — same deal, different marks. Where do funds disagree?"""
 
 import streamlit as st

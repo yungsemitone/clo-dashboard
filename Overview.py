@@ -1,3 +1,5 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 """
 CLO Deal Intelligence Dashboard
 All data scraped from SEC EDGAR NPORT-P filings.
