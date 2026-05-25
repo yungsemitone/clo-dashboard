@@ -21,9 +21,10 @@ st.markdown("""<style>
     div[data-testid="stSidebar"] * { color: white !important; }
     [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
     [data-testid="stSidebarNav"] li:has(span:contains("Filing Detail")) { display: none; }
-    [data-testid="stToolbar"] { display: none !important; }
     .stDeployButton { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
+    [data-testid="stToolbar"] > div { display: none !important; }
+    [data-testid="stToolbar"] { min-width: 0 !important; padding: 0 !important; }
 </style>""", unsafe_allow_html=True)
 
 

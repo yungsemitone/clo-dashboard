@@ -3,11 +3,10 @@
 import streamlit as st
 
 HIDE_CSS = """<style>
-    .stAppToolbar { display: none !important; }
-    [data-testid="stToolbar"] { display: none !important; }
     .stDeployButton { display: none !important; }
-    iframe[title="streamlit_github_button"] { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
+    [data-testid="stToolbar"] > div { display: none !important; }
+    [data-testid="stToolbar"] { min-width: 0 !important; padding: 0 !important; }
 </style>"""
 
 
