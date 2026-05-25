@@ -177,7 +177,7 @@ st.dataframe(display, use_container_width=True, hide_index=True, height=400)
 st.divider()
 st.subheader("Deal Detail")
 
-deal_options = {row["deal_name"]: row["deal_id"] for _, row in deal_spreads.iterrows()}
+deal_options = dict(sorted({row["deal_name"]: row["deal_id"] for _, row in deal_spreads.iterrows()}.items()))
 selected_deal = st.selectbox("Select a cross-held deal", list(deal_options.keys()))
 selected_id = deal_options[selected_deal]
 
