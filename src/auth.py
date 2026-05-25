@@ -2,9 +2,19 @@
 
 import streamlit as st
 
+HIDE_CSS = """<style>
+    .stAppToolbar { display: none !important; }
+    [data-testid="stToolbar"] { display: none !important; }
+    .stDeployButton { display: none !important; }
+    iframe[title="streamlit_github_button"] { display: none !important; }
+    [data-testid="stDecoration"] { display: none !important; }
+</style>"""
+
 
 def check_password():
     """Returns True if the user has entered the correct password."""
+    st.markdown(HIDE_CSS, unsafe_allow_html=True)
+
     if st.session_state.get("authenticated", False):
         return True
 
@@ -22,7 +32,7 @@ def check_password():
             try:
                 correct = st.secrets["password"]
             except (FileNotFoundError, KeyError):
-                correct = "clo2026"  # default fallback
+                correct = "clo2026"
 
             if password == correct:
                 st.session_state["authenticated"] = True

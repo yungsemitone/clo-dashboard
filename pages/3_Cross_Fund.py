@@ -1,7 +1,5 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-"""Cross-Fund Comparison — same deal, different marks. Where do funds disagree?"""
-
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -19,7 +17,7 @@ st.markdown("""<style>
     [data-testid="stToolbar"] { display: none !important; }
     .stDeployButton { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
-    header[data-testid="stHeader"] { visibility: hidden; height: 0; }
+
 </style>""", unsafe_allow_html=True)
 
 from src.auth import check_password

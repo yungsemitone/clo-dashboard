@@ -1,9 +1,5 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-"""
-Filing Detail — view stats, summary, and holdings for a specific NPORT-P filing.
-Accessed from the Fund Profiles page when clicking a historical filing.
-"""
 
 import streamlit as st
 import pandas as pd
@@ -28,7 +24,7 @@ st.markdown("""<style>
     [data-testid="stToolbar"] { display: none !important; }
     .stDeployButton { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
-    header[data-testid="stHeader"] { visibility: hidden; height: 0; }
+
 </style>""", unsafe_allow_html=True)
 
 

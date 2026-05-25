@@ -1,10 +1,5 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-"""
-CLO Deal Intelligence Dashboard
-All data scraped from SEC EDGAR NPORT-P filings.
-"""
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -26,13 +21,9 @@ st.markdown("""<style>
     div[data-testid="stSidebar"] * { color: white !important; }
     [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
     [data-testid="stSidebarNav"] li:has(span:contains("Filing Detail")) { display: none; }
-    header { display: none !important; }
-    .stAppToolbar { display: none !important; }
     [data-testid="stToolbar"] { display: none !important; }
     .stDeployButton { display: none !important; }
-    iframe[title="streamlit_github_button"] { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
-    #stDecoration { display: none !important; }
 </style>""", unsafe_allow_html=True)
 
 

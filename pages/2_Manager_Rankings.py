@@ -1,7 +1,5 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-"""Manager Rankings — real deal counts, par held, and pricing from NPORT data."""
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -23,7 +21,7 @@ st.markdown("""<style>
     [data-testid="stToolbar"] { display: none !important; }
     .stDeployButton { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
-    header[data-testid="stHeader"] { visibility: hidden; height: 0; }
+
 </style>""", unsafe_allow_html=True)
 
 

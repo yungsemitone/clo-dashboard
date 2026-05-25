@@ -1,9 +1,5 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-"""
-Fund Profiles — deep dive into each CLO equity fund's portfolio.
-Shows positions, stats, manager concentration, pricing, and links to source filings.
-"""
 
 import streamlit as st
 import pandas as pd
@@ -27,7 +23,7 @@ st.markdown("""<style>
     [data-testid="stToolbar"] { display: none !important; }
     .stDeployButton { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
-    header[data-testid="stHeader"] { visibility: hidden; height: 0; }
+
 </style>""", unsafe_allow_html=True)
 
 
