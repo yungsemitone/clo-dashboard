@@ -127,13 +127,16 @@ for h, d in holdings:
     })
 df = pd.DataFrame(rows)
 
-# --- Portfolio metrics ---
-total_par = df["par_amount"].sum()
-total_mv = df["market_value"].sum()
+# Use only the latest filing for metrics, charts, and tables
+filing_date = df["filing_date"].max() if not df.empty else None
+latest_df = df[df["filing_date"] == filing_date] if filing_date else df
+
+# --- Portfolio metrics (latest filing only) ---
+total_par = latest_df["par_amount"].sum()
+total_mv = latest_df["market_value"].sum()
 avg_price = (total_mv / total_par * 100) if total_par > 0 else 0
-n_positions = len(df)
-n_managers = df["manager"].nunique()
-filing_date = df["filing_date"].iloc[0] if not df.empty else None
+n_positions = len(latest_df)
+n_managers = latest_df["manager"].nunique()
 
 col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric("Positions", n_positions)
@@ -149,7 +152,7 @@ chart1, chart2 = st.columns(2)
 
 with chart1:
     st.subheader("Par by Manager (Top 15)")
-    mgr_par = df.groupby("manager")["par_amount"].sum().nlargest(15).sort_values()
+    mgr_par = latest_df.groupby("manager")["par_amount"].sum().nlargest(15).sort_values()
     mgr_par_mm = mgr_par / 1e6
     fig = px.bar(x=mgr_par_mm.values, y=mgr_par_mm.index, orientation="h",
                  color_discrete_sequence=["#1B4D3E"],
@@ -159,7 +162,7 @@ with chart1:
 
 with chart2:
     st.subheader("Price Distribution")
-    price_data = df.dropna(subset=["implied_price"])
+    price_data = latest_df.dropna(subset=["implied_price"])
     price_data = price_data[price_data["implied_price"].between(0, 150)]
     if not price_data.empty:
         fig = px.histogram(price_data, x="implied_price", nbins=25,
@@ -173,7 +176,7 @@ with chart2:
 st.divider()
 st.subheader("Manager Concentration")
 
-mgr_stats = df.groupby("manager").agg(
+mgr_stats = latest_df.groupby("manager").agg(
     positions=("deal_name", "count"),
     total_par=("par_amount", "sum"),
     total_mv=("market_value", "sum"),
@@ -209,7 +212,7 @@ top_col, bot_col = st.columns(2)
 
 with top_col:
     st.subheader("Largest Positions")
-    top = df.nlargest(10, "par_amount")[["deal_name", "manager", "par_amount", "implied_price"]].copy()
+    top = latest_df.nlargest(10, "par_amount")[["deal_name", "manager", "par_amount", "implied_price"]].copy()
     top["par_amount"] = (top["par_amount"] / 1e6).round(2)
     top["implied_price"] = top["implied_price"].round(1)
     top = top.rename(columns={
@@ -220,7 +223,7 @@ with top_col:
 
 with bot_col:
     st.subheader("Deepest Discounts")
-    priced = df.dropna(subset=["implied_price"])
+    priced = latest_df.dropna(subset=["implied_price"])
     written_off = priced[priced["implied_price"] < 1]
     distressed = priced[priced["implied_price"] >= 1]
     if not distressed.empty:
@@ -240,7 +243,7 @@ with bot_col:
 st.divider()
 st.subheader("All Holdings")
 
-full_display = df[["deal_name", "manager", "par_amount", "market_value", "implied_price", "cusip"]].copy()
+full_display = latest_df[["deal_name", "manager", "par_amount", "market_value", "implied_price", "cusip"]].copy()
 full_display["par_amount"] = (full_display["par_amount"] / 1e6).round(2)
 full_display["market_value"] = (full_display["market_value"] / 1e6).round(2)
 full_display["implied_price"] = full_display["implied_price"].round(1)
@@ -304,7 +307,7 @@ if st.session_state[summary_key]:
     st.markdown("---")
 
     # --- Generate summary paragraph ---
-    top_mgr = df.groupby("manager")["par_amount"].sum().nlargest(3)
+    top_mgr = latest_df.groupby("manager")["par_amount"].sum().nlargest(3)
     top_mgr_names = ", ".join(top_mgr.index[:2]) + f", and {top_mgr.index[2]}" if len(top_mgr) >= 3 else " and ".join(top_mgr.index)
 
     priced_df = df.dropna(subset=["implied_price"])
@@ -312,7 +315,7 @@ if st.session_state[summary_key]:
     below_20 = len(priced_df[priced_df["implied_price"] < 20])
 
     # Largest position
-    largest = df.iloc[0]
+    largest = latest_df.iloc[0]
     largest_name = largest["deal_name"]
     largest_par = largest["par_amount"] / 1e6
 
@@ -355,7 +358,7 @@ if st.session_state[summary_key]:
     kcol2.metric("Avg Price", f"{avg_price:.1f}¢")
 
     # Concentration: top 5 managers % of portfolio
-    top5_par = df.groupby("manager")["par_amount"].sum().nlargest(5).sum()
+    top5_par = latest_df.groupby("manager")["par_amount"].sum().nlargest(5).sum()
     top5_pct = (top5_par / total_par * 100) if total_par > 0 else 0
     kcol3.metric("Top 5 Mgr Concentration", f"{top5_pct:.0f}%")
 
