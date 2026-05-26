@@ -14,10 +14,8 @@ st.set_page_config(page_title="Cross-Fund Comparison", page_icon="🔀", layout=
 st.markdown("""<style>
     .block-container { padding-top: 1.5rem; }
     [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
-    [data-testid="stToolbar"] { display: none !important; }
     .stDeployButton { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
-
 </style>""", unsafe_allow_html=True)
 
 from src.auth import check_password

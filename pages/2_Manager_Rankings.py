@@ -18,10 +18,8 @@ if not check_password():
 st.markdown("""<style>
     .block-container { padding-top: 1.5rem; }
     [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
-    [data-testid="stToolbar"] { display: none !important; }
     .stDeployButton { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
-
 </style>""", unsafe_allow_html=True)
 
 
@@ -74,7 +72,7 @@ st.divider()
 
 # Leaderboard
 st.subheader("Manager Leaderboard")
-rank_col, _ = st.columns([1, 4])
+rank_col, _ = st.columns([2, 3])
 with rank_col:
     sort_by = st.selectbox("Rank by", ["deals", "total_par_mm", "avg_price", "funds"])
 ascending = sort_by == "avg_price"
