@@ -79,13 +79,20 @@ if multi_df.empty:
     st.stop()
 
 # Compute spread (max price - min price) per deal
-deal_spreads = multi_df.dropna(subset=["price"]).groupby(["deal_id", "deal_name", "manager"]).agg(
+# Exclude near-zero marks (write-offs) — not real valuation disagreements
+priced_multi = multi_df.dropna(subset=["price"])
+priced_multi = priced_multi[priced_multi["price"] >= 1]
+
+deal_spreads = priced_multi.groupby(["deal_id", "deal_name", "manager"]).agg(
     funds=("fund", "nunique"),
     min_price=("price", "min"),
     max_price=("price", "max"),
     avg_price=("price", "mean"),
     total_par=("par", "sum"),
 ).reset_index()
+
+# Only keep deals where 2+ funds have a real price
+deal_spreads = deal_spreads[deal_spreads["funds"] >= 2]
 deal_spreads["spread"] = deal_spreads["max_price"] - deal_spreads["min_price"]
 deal_spreads = deal_spreads.sort_values("spread", ascending=False)
 
@@ -113,6 +120,7 @@ if not top_spread.empty:
 
     for _, row in top_spread.iterrows():
         deal_holdings = multi_df[multi_df["deal_id"] == row["deal_id"]].dropna(subset=["price"])
+        deal_holdings = deal_holdings[deal_holdings["price"] >= 1]
         for _, h in deal_holdings.iterrows():
             fig.add_trace(go.Scatter(
                 x=[h["price"]],
@@ -147,8 +155,12 @@ if not top_spread.empty:
                 name=FUND_NAMES[fund],
             ))
 
+    # Order: highest spread at top (Plotly y-axis goes bottom-to-top)
+    deal_order = list(reversed([row["deal_name"][:40] for _, row in top_spread.iterrows()]))
+
     fig.update_layout(
         xaxis_title="Implied Price (¢)",
+        yaxis=dict(categoryorder="array", categoryarray=deal_order),
         height=max(400, len(top_spread) * 35),
         margin=dict(l=20, r=20, t=20, b=40),
         legend=dict(orientation="h", y=-0.15),
