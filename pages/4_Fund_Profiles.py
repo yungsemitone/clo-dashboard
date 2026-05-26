@@ -86,7 +86,9 @@ st.caption("Deep dive into each CLO equity fund's portfolio")
 
 # Fund selector
 fund_options = dict(sorted({f"{info['name']} ({info['ticker']})" : ticker for ticker, info in FUND_INFO.items()}.items()))
-selected_label = st.selectbox("Select a fund", list(fund_options.keys()))
+fund_col, _ = st.columns([2, 3])
+with fund_col:
+    selected_label = st.selectbox("Select a fund", list(fund_options.keys()))
 fund_ticker = fund_options[selected_label]
 fund = FUND_INFO[fund_ticker]
 

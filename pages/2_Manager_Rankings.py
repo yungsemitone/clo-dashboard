@@ -74,7 +74,9 @@ st.divider()
 
 # Leaderboard
 st.subheader("Manager Leaderboard")
-sort_by = st.selectbox("Rank by", ["deals", "total_par_mm", "avg_price", "funds"])
+rank_col, _ = st.columns([1, 4])
+with rank_col:
+    sort_by = st.selectbox("Rank by", ["deals", "total_par_mm", "avg_price", "funds"])
 ascending = sort_by == "avg_price"
 
 ranked = mgr_stats.sort_values(sort_by, ascending=ascending, na_position="last").reset_index(drop=True)

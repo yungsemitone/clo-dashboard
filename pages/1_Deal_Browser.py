@@ -66,7 +66,9 @@ if not deals:
 
 # Step 1: Select a manager
 managers = sorted(set(d.manager for d in deals))
-selected_manager = st.selectbox("Select a manager", managers)
+mgr_col, _ = st.columns([2, 3])
+with mgr_col:
+    selected_manager = st.selectbox("Select a manager", managers)
 manager_deals = [d for d in deals if d.manager == selected_manager]
 
 st.divider()
