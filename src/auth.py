@@ -1,18 +1,47 @@
-"""Shared password protection for all pages."""
+"""Shared password protection and UI cleanup for all pages."""
 
 import streamlit as st
 
-HIDE_CSS = """<style>
+HIDE_ELEMENTS = """
+<style>
     .stDeployButton { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
-    [data-testid="stMainMenu"] { display: none !important; }
-    .stAppToolbar [data-testid="baseButton-headerNoPadding"] { display: none !important; }
-</style>"""
+</style>
+<script>
+function hideGitHub() {
+    // Hide Fork/GitHub buttons (they load as iframes or links)
+    document.querySelectorAll('iframe').forEach(el => {
+        if ((el.title || '').toLowerCase().includes('github') ||
+            (el.src || '').includes('github')) {
+            el.style.display = 'none';
+        }
+    });
+    // Hide any element containing "Fork" text in the toolbar area
+    const toolbar = document.querySelector('[data-testid="stToolbar"]') ||
+                    document.querySelector('.stAppToolbar');
+    if (toolbar) {
+        toolbar.querySelectorAll('a, button, span').forEach(el => {
+            const text = el.textContent || '';
+            const href = el.getAttribute('href') || '';
+            if (text.includes('Fork') || href.includes('github.com')) {
+                el.style.display = 'none';
+            }
+        });
+    }
+}
+// Run immediately and keep checking (elements load dynamically)
+hideGitHub();
+const observer = new MutationObserver(hideGitHub);
+observer.observe(document.body, { childList: true, subtree: true });
+// Stop observing after 10 seconds to save resources
+setTimeout(() => observer.disconnect(), 10000);
+</script>
+"""
 
 
 def check_password():
     """Returns True if the user has entered the correct password."""
-    st.markdown(HIDE_CSS, unsafe_allow_html=True)
+    st.markdown(HIDE_ELEMENTS, unsafe_allow_html=True)
 
     if st.session_state.get("authenticated", False):
         return True

@@ -22,9 +22,32 @@ st.markdown("""<style>
     [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
     .stDeployButton { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
-    [data-testid="stMainMenu"] { display: none !important; }
-    .stAppToolbar [data-testid="baseButton-headerNoPadding"] { display: none !important; }
-</style>""", unsafe_allow_html=True)
+</style>
+<script>
+function hideGitHub() {
+    document.querySelectorAll('iframe').forEach(el => {
+        if ((el.title || '').toLowerCase().includes('github') ||
+            (el.src || '').includes('github')) {
+            el.style.display = 'none';
+        }
+    });
+    const toolbar = document.querySelector('[data-testid="stToolbar"]') ||
+                    document.querySelector('.stAppToolbar');
+    if (toolbar) {
+        toolbar.querySelectorAll('a, button, span').forEach(el => {
+            const text = el.textContent || '';
+            const href = el.getAttribute('href') || '';
+            if (text.includes('Fork') || href.includes('github.com')) {
+                el.style.display = 'none';
+            }
+        });
+    }
+}
+hideGitHub();
+const observer = new MutationObserver(hideGitHub);
+observer.observe(document.body, { childList: true, subtree: true });
+setTimeout(() => observer.disconnect(), 10000);
+</script>""", unsafe_allow_html=True)
 
 
 @st.cache_resource
