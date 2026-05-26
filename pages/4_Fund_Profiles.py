@@ -290,6 +290,16 @@ if summary_key not in st.session_state:
 if st.button("📋 View Filing Summary", use_container_width=True, key=f"btn_{fund_ticker}"):
     st.session_state[summary_key] = not st.session_state[summary_key]
 
+st.markdown(f"""
+<a href="{edgar_nport_url}" target="_blank" style="text-decoration: none;">
+    <div style="background: #1B4D3E; color: white; padding: 12px 24px;
+                border-radius: 8px; text-align: center; font-weight: 600;
+                font-size: 0.95rem; margin-top: 4px; cursor: pointer;">
+        View on SEC EDGAR →
+    </div>
+</a>
+""", unsafe_allow_html=True)
+
 if st.session_state[summary_key]:
     st.markdown("---")
 
@@ -352,19 +362,6 @@ if st.session_state[summary_key]:
     # Median price
     median_price = priced_df["implied_price"].median() if not priced_df.empty else 0
     kcol4.metric("Median Price", f"{median_price:.1f}¢")
-
-    st.markdown("")
-
-    # --- EDGAR button ---
-    st.markdown(f"""
-    <a href="{edgar_nport_url}" target="_blank" style="text-decoration: none;">
-        <div style="background: #1B4D3E; color: white; padding: 12px 24px;
-                    border-radius: 8px; text-align: center; font-weight: 600;
-                    font-size: 0.95rem; margin-top: 8px; cursor: pointer;">
-            View on SEC EDGAR →
-        </div>
-    </a>
-    """, unsafe_allow_html=True)
 
     st.markdown("")
 
