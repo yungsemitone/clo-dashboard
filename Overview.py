@@ -20,11 +20,10 @@ st.markdown("""<style>
     div[data-testid="stSidebar"] { background: #1B4D3E; }
     div[data-testid="stSidebar"] * { color: white !important; }
     [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
-    [data-testid="stSidebarNav"] li:has(span:contains("Filing Detail")) { display: none; }
     .stDeployButton { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
-    [data-testid="stToolbar"] > div { display: none !important; }
-    [data-testid="stToolbar"] { min-width: 0 !important; padding: 0 !important; }
+    [data-testid="stMainMenu"] { display: none !important; }
+    .stAppToolbar [data-testid="baseButton-headerNoPadding"] { display: none !important; }
 </style>""", unsafe_allow_html=True)
 
 

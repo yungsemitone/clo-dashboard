@@ -5,8 +5,8 @@ import streamlit as st
 HIDE_CSS = """<style>
     .stDeployButton { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
-    [data-testid="stToolbar"] > div { display: none !important; }
-    [data-testid="stToolbar"] { min-width: 0 !important; padding: 0 !important; }
+    [data-testid="stMainMenu"] { display: none !important; }
+    .stAppToolbar [data-testid="baseButton-headerNoPadding"] { display: none !important; }
 </style>"""
 
 
