@@ -6,6 +6,7 @@ import pandas as pd
 
 from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
+from src.ui import apply_chrome
 
 import yaml
 from pathlib import Path
@@ -16,12 +17,7 @@ st.set_page_config(page_title="Deal Browser", page_icon="🔍", layout="wide")
 from src.auth import check_password
 if not check_password():
     st.stop()
-st.markdown("""<style>
-    .block-container { padding-top: 1.5rem; }
-    [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
-    .stDeployButton { display: none !important; }
-    [data-testid="stDecoration"] { display: none !important; }
-</style>""", unsafe_allow_html=True)
+apply_chrome()
 
 
 @st.cache_resource

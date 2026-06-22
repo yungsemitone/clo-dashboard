@@ -7,17 +7,13 @@ import plotly.express as px
 
 from src.db import init_db, get_session
 from src.analytics.conviction import latest_holdings, deal_conviction, manager_conviction
+from src.ui import apply_chrome
 
 import yaml
 from pathlib import Path
 
 st.set_page_config(page_title="Conviction Ranking", page_icon="🎯", layout="wide")
-st.markdown("""<style>
-    .block-container { padding-top: 1.5rem; }
-    [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
-    .stDeployButton { display: none !important; }
-    [data-testid="stDecoration"] { display: none !important; }
-</style>""", unsafe_allow_html=True)
+apply_chrome()
 
 from src.auth import check_password
 if not check_password():
@@ -37,7 +33,7 @@ FUND_NAMES = {"OXLC": "Oxford Lane", "ECC": "Eagle Point",
               "OCCI": "OFS Credit", "PDCC": "Pearl Diver", "PRIF": "Priority Income"}
 
 # Discrete green scale keyed by number of funds (more funds = darker = higher conviction)
-FUND_COUNT_COLORS = {1: "#C8DAD3", 2: "#7BA098", 3: "#4A7A68", 4: "#2E5E4A", 5: "#1B4D3E"}
+FUND_COUNT_COLORS = {1: "#C8DAD3", 2: "#7BA098", 3: "#4A7A68", 4: "#2E5E4A", 5: "#CBA255"}
 
 session = get_db()
 
@@ -90,7 +86,7 @@ with dcol2:
     top_mgr = mc.nlargest(15, "total_par").sort_values("total_par")
     fig = px.bar(
         top_mgr, x=top_mgr["total_par"] / 1e6, y="manager", orientation="h",
-        color="n_funds", color_continuous_scale=["#C8DAD3", "#1B4D3E"],
+        color="n_funds", color_continuous_scale=["#C8DAD3", "#CBA255"],
         labels={"x": "Total Par ($M)", "y": "", "color": "# Funds"},
         range_color=[1, n_total_funds],
     )

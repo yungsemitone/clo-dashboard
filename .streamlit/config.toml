@@ -1,9 +1,21 @@
+# Warm-dark editorial theme (matches the "Morning Desk" look).
 [theme]
-primaryColor = "#1B4D3E"
-backgroundColor = "#FAFAFA"
-secondaryBackgroundColor = "#F0F2F6"
-textColor = "#1A1A1A"
-font = "sans serif"
+base = "dark"
+primaryColor = "#C25361"             # claret — buttons, active states, focus
+backgroundColor = "#1A1513"          # warm near-black page
+secondaryBackgroundColor = "#251D19" # cards, inputs, widgets
+textColor = "#F3ECE3"                # warm ink
+linkColor = "#CBA255"                # gold links
+borderColor = "#3A2F28"
+showWidgetBorder = true
+baseRadius = "14px"
+font = "Libre Franklin, system-ui, sans-serif"
+headingFont = "Fraunces, Georgia, serif"
+codeFont = "IBM Plex Mono, monospace"
+
+[theme.sidebar]
+backgroundColor = "#211A17"
+secondaryBackgroundColor = "#251D19"
 
 [server]
 headless = true

@@ -11,8 +11,8 @@ def check_password():
 
     st.markdown("""
     <div style="max-width: 400px; margin: 15vh auto; text-align: center;">
-        <h2 style="color: #1B4D3E;">🏦 CLO Monitor</h2>
-        <p style="color: #666;">Enter password to access the dashboard</p>
+        <h2 style="color: #CBA255; font-family: 'Fraunces', Georgia, serif;">🏦 CLO Monitor</h2>
+        <p style="color: #93857A;">Enter password to access the dashboard</p>
     </div>
     """, unsafe_allow_html=True)
 

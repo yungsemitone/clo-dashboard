@@ -6,6 +6,7 @@ import plotly.express as px
 
 from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
+from src.ui import apply_chrome
 
 import yaml
 from pathlib import Path
@@ -15,12 +16,7 @@ st.set_page_config(page_title="Manager Rankings", page_icon="🏆", layout="wide
 from src.auth import check_password
 if not check_password():
     st.stop()
-st.markdown("""<style>
-    .block-container { padding-top: 1.5rem; }
-    [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
-    .stDeployButton { display: none !important; }
-    [data-testid="stDecoration"] { display: none !important; }
-</style>""", unsafe_allow_html=True)
+apply_chrome()
 
 
 @st.cache_resource
@@ -96,7 +92,7 @@ with chart1:
     st.subheader("Par by Manager (Top 15)")
     top = mgr_stats.nlargest(15, "total_par_mm").sort_values("total_par_mm")
     fig = px.bar(top, x="total_par_mm", y="manager", orientation="h",
-                 color_discrete_sequence=["#1B4D3E"],
+                 color_discrete_sequence=["#CBA255"],
                  labels={"total_par_mm": "Total Par ($M)", "manager": ""})
     fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20))
     st.plotly_chart(fig, use_container_width=True)
@@ -107,7 +103,7 @@ with chart2:
     if not top_price.empty:
         fig = px.bar(top_price, x="avg_price", y="manager", orientation="h",
                      color="avg_price",
-                     color_continuous_scale=["#DC3545", "#FFC107", "#1B4D3E"],
+                     color_continuous_scale=["#D6705F", "#CBA255", "#6FA368"],
                      labels={"avg_price": "Avg Price (¢ per $1 par)", "manager": ""})
         fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20), coloraxis_showscale=False)
         st.plotly_chart(fig, use_container_width=True)

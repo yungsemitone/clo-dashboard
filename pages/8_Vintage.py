@@ -7,17 +7,13 @@ import plotly.express as px
 
 from src.db import init_db, get_session
 from src.analytics.vintage import vintage_summary, unknown_vintage_count
+from src.ui import apply_chrome
 
 import yaml
 from pathlib import Path
 
 st.set_page_config(page_title="Vintage Analysis", page_icon="📅", layout="wide")
-st.markdown("""<style>
-    .block-container { padding-top: 1.5rem; }
-    [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
-    .stDeployButton { display: none !important; }
-    [data-testid="stDecoration"] { display: none !important; }
-</style>""", unsafe_allow_html=True)
+apply_chrome()
 
 from src.auth import check_password
 if not check_password():
@@ -63,7 +59,7 @@ priced = vs.dropna(subset=["avg_price"]).copy()
 if not priced.empty:
     fig = px.bar(
         priced, x="vintage", y="avg_price",
-        color="avg_price", color_continuous_scale=["#DC3545", "#FFC107", "#1B4D3E"],
+        color="avg_price", color_continuous_scale=["#D6705F", "#CBA255", "#6FA368"],
         labels={"vintage": "Vintage Year", "avg_price": "Avg Implied Price (¢)"},
         range_color=[0, 100],
     )
@@ -75,7 +71,7 @@ if not priced.empty:
 st.subheader("Total Par by Vintage")
 fig = px.bar(
     vs, x="vintage", y=vs["total_par"] / 1e6,
-    color_discrete_sequence=["#1B4D3E"],
+    color_discrete_sequence=["#CBA255"],
     labels={"vintage": "Vintage Year", "y": "Total Par ($M)"},
 )
 fig.update_layout(height=380, margin=dict(l=20, r=20, t=20, b=20))

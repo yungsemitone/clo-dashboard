@@ -7,17 +7,13 @@ import plotly.graph_objects as go
 
 from src.db import init_db, get_session
 from src.analytics.position_changes import get_filing_dates, compute_position_changes
+from src.ui import apply_chrome
 
 import yaml
 from pathlib import Path
 
 st.set_page_config(page_title="Position Changes", page_icon="🔄", layout="wide")
-st.markdown("""<style>
-    .block-container { padding-top: 1.5rem; }
-    [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
-    .stDeployButton { display: none !important; }
-    [data-testid="stDecoration"] { display: none !important; }
-</style>""", unsafe_allow_html=True)
+apply_chrome()
 
 from src.auth import check_password
 if not check_password():
@@ -102,7 +98,7 @@ if moves:
     moves_df = pd.DataFrame(moves)
     moves_df["abs"] = moves_df["change"].abs()
     top_moves = moves_df.nlargest(15, "abs").sort_values("change")
-    colors = {"Added": "#1B4D3E", "Exited": "#DC3545", "Resized": "#7BA098"}
+    colors = {"Added": "#6FA368", "Exited": "#D6705F", "Resized": "#CBA255"}
     fig = go.Figure()
     for mtype in ["Added", "Exited", "Resized"]:
         sub = top_moves[top_moves["type"] == mtype]

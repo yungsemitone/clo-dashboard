@@ -7,17 +7,13 @@ import plotly.graph_objects as go
 
 from src.db import init_db, get_session
 from src.analytics.fund_compare import compare_funds
+from src.ui import apply_chrome
 
 import yaml
 from pathlib import Path
 
 st.set_page_config(page_title="Fund Comparison", page_icon="⚖️", layout="wide")
-st.markdown("""<style>
-    .block-container { padding-top: 1.5rem; }
-    [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
-    .stDeployButton { display: none !important; }
-    [data-testid="stDecoration"] { display: none !important; }
-</style>""", unsafe_allow_html=True)
+apply_chrome()
 
 from src.auth import check_password
 if not check_password():
@@ -55,7 +51,7 @@ with c2:
 fund_b = labels[label_b]
 
 name_a, name_b = FUND_NAMES[fund_a], FUND_NAMES[fund_b]
-A_COLOR, B_COLOR = "#1B4D3E", "#D4A843"
+A_COLOR, B_COLOR = "#CBA255", "#C25361"
 
 result = compare_funds(session, fund_a, fund_b)
 ma, mb = result["metrics_a"], result["metrics_b"]

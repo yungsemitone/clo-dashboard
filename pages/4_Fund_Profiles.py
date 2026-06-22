@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
 from src.summarizer import generate_fund_summary, ai_summaries_enabled, DEFAULT_SUMMARY_MODEL
+from src.ui import apply_chrome
 
 import yaml
 from pathlib import Path
@@ -18,12 +19,7 @@ st.set_page_config(page_title="Fund Profiles", page_icon="🏛️", layout="wide
 from src.auth import check_password
 if not check_password():
     st.stop()
-st.markdown("""<style>
-    .block-container { padding-top: 1.5rem; }
-    [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
-    .stDeployButton { display: none !important; }
-    [data-testid="stDecoration"] { display: none !important; }
-</style>""", unsafe_allow_html=True)
+apply_chrome()
 
 
 @st.cache_resource
@@ -156,7 +152,7 @@ with chart1:
     mgr_par = latest_df.groupby("manager")["par_amount"].sum().nlargest(15).sort_values()
     mgr_par_mm = mgr_par / 1e6
     fig = px.bar(x=mgr_par_mm.values, y=mgr_par_mm.index, orientation="h",
-                 color_discrete_sequence=["#1B4D3E"],
+                 color_discrete_sequence=["#CBA255"],
                  labels={"x": "Par ($M)", "y": ""})
     fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20))
     st.plotly_chart(fig, use_container_width=True)
@@ -167,7 +163,7 @@ with chart2:
     price_data = price_data[price_data["implied_price"].between(0, 150)]
     if not price_data.empty:
         fig = px.histogram(price_data, x="implied_price", nbins=25,
-                          color_discrete_sequence=["#1B4D3E"],
+                          color_discrete_sequence=["#CBA255"],
                           labels={"implied_price": "Implied Price (¢)"})
         fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
                          yaxis_title="Positions", showlegend=False)
@@ -199,7 +195,7 @@ fig = px.treemap(
     mgr_stats.nlargest(20, "total_par"),
     path=["manager"], values="total_par",
     color="avg_price",
-    color_continuous_scale=["#DC3545", "#FFC107", "#1B4D3E"],
+    color_continuous_scale=["#D6705F", "#CBA255", "#6FA368"],
     labels={"total_par": "Par Amount", "avg_price": "Avg Price (¢)", "manager": "Manager"},
 )
 fig.update_layout(height=400, margin=dict(l=10, r=10, t=10, b=10))
@@ -267,18 +263,18 @@ filing_quarter = filing_date.strftime("%B %Y") if filing_date else ""
 
 # Styled filing card
 st.markdown(f"""
-<div style="background: white; border: 1px solid #E0E0E0; border-radius: 10px;
+<div style="background: #251D19; border: 1px solid #3A2F28; border-radius: 10px;
             padding: 1.5rem; margin: 1rem 0;">
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
-            <div style="font-size: 1.1rem; font-weight: 600; color: #1B4D3E;">
+            <div style="font-size: 1.1rem; font-weight: 600; color: #CBA255;">
                 NPORT-P — {filing_quarter}
             </div>
-            <div style="font-size: 0.85rem; color: #888; margin-top: 4px;">
+            <div style="font-size: 0.85rem; color: #93857A; margin-top: 4px;">
                 Filed {filing_date_str} · {n_positions} holdings · SEC EDGAR
             </div>
         </div>
-        <div style="background: #E8F5E9; color: #1B4D3E; padding: 4px 12px;
+        <div style="background: rgba(203,162,85,0.14); color: #CBA255; padding: 4px 12px;
                     border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
             Latest
         </div>
@@ -296,7 +292,7 @@ if st.button("📋 View Filing Summary", use_container_width=True, key=f"btn_{fu
 
 st.markdown(f"""
 <a href="{edgar_nport_url}" target="_blank" style="text-decoration: none;">
-    <div style="background: #1B4D3E; color: white; padding: 12px 24px;
+    <div style="background: #C25361; color: white; padding: 12px 24px;
                 border-radius: 8px; text-align: center; font-weight: 600;
                 font-size: 0.95rem; margin-top: 4px; cursor: pointer;">
         View on SEC EDGAR →
@@ -340,9 +336,9 @@ if st.session_state[summary_key]:
         summary = generate_fund_summary(fund_data)
 
     st.markdown(f"""
-    <div style="background: #F8FAF9; border-left: 4px solid #1B4D3E;
+    <div style="background: #251D19; border-left: 4px solid #CBA255;
                 padding: 1rem 1.2rem; border-radius: 0 6px 6px 0;
-                line-height: 1.7; font-size: 0.95rem; color: #333;">
+                line-height: 1.7; font-size: 0.95rem; color: #C9BCAF;">
         {summary.replace(chr(10) + chr(10), "<br><br>")}
     </div>
     """, unsafe_allow_html=True)
@@ -392,14 +388,14 @@ if historical_dates:
         hist_price = (hist_mv / hist_par * 100) if hist_par > 0 else 0
 
         st.markdown(f"""
-        <div style="background: white; border: 1px solid #E0E0E0; border-radius: 10px;
+        <div style="background: #251D19; border: 1px solid #3A2F28; border-radius: 10px;
                     padding: 1.2rem; margin: 0.5rem 0;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <div style="font-size: 1rem; font-weight: 600; color: #333;">
+                    <div style="font-size: 1rem; font-weight: 600; color: #C9BCAF;">
                         NPORT-P — {hist_quarter}
                     </div>
-                    <div style="font-size: 0.8rem; color: #888; margin-top: 3px;">
+                    <div style="font-size: 0.8rem; color: #93857A; margin-top: 3px;">
                         Filed {hist_date_str} · {hist_count} holdings ·
                         Par ${hist_par / 1e6:,.0f}M · Avg Price {hist_price:.1f}¢
                     </div>

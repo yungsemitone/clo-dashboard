@@ -9,6 +9,7 @@ from datetime import datetime
 
 from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
+from src.ui import apply_chrome
 
 import yaml
 from pathlib import Path
@@ -18,12 +19,7 @@ st.set_page_config(page_title="Filing Detail", page_icon="📄", layout="wide")
 from src.auth import check_password
 if not check_password():
     st.stop()
-st.markdown("""<style>
-    .block-container { padding-top: 1.5rem; }
-    [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
-    .stDeployButton { display: none !important; }
-    [data-testid="stDecoration"] { display: none !important; }
-</style>""", unsafe_allow_html=True)
+apply_chrome()
 
 
 @st.cache_resource
@@ -132,9 +128,9 @@ if above_50 > 0 or below_20 > 0:
         summary += "reflecting a mix of performing and distressed positions."
 
 st.markdown(f"""
-<div style="background: #F8FAF9; border-left: 4px solid #1B4D3E;
+<div style="background: #251D19; border-left: 4px solid #CBA255;
             padding: 1rem 1.2rem; border-radius: 0 6px 6px 0;
-            line-height: 1.7; font-size: 0.95rem; color: #333;">
+            line-height: 1.7; font-size: 0.95rem; color: #C9BCAF;">
     {summary}
 </div>
 """, unsafe_allow_html=True)
@@ -158,7 +154,7 @@ with chart1:
     st.subheader("Par by Manager (Top 10)")
     mgr_par = df.groupby("manager")["par_amount"].sum().nlargest(10).sort_values() / 1e6
     fig = px.bar(x=mgr_par.values, y=mgr_par.index, orientation="h",
-                 color_discrete_sequence=["#1B4D3E"],
+                 color_discrete_sequence=["#CBA255"],
                  labels={"x": "Par ($M)", "y": ""})
     fig.update_layout(height=350, margin=dict(l=20, r=20, t=20, b=20))
     st.plotly_chart(fig, use_container_width=True)
@@ -169,7 +165,7 @@ with chart2:
     price_data = price_data[price_data["implied_price"].between(0, 150)]
     if not price_data.empty:
         fig = px.histogram(price_data, x="implied_price", nbins=20,
-                          color_discrete_sequence=["#1B4D3E"],
+                          color_discrete_sequence=["#CBA255"],
                           labels={"implied_price": "Implied Price (¢)"})
         fig.update_layout(height=350, margin=dict(l=20, r=20, t=20, b=20),
                          yaxis_title="Positions", showlegend=False)
@@ -225,7 +221,7 @@ edgar_url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={ci
 
 st.markdown(f"""
 <a href="{edgar_url}" target="_blank" style="text-decoration: none;">
-    <div style="background: #1B4D3E; color: white; padding: 12px 24px;
+    <div style="background: #C25361; color: white; padding: 12px 24px;
                 border-radius: 8px; text-align: center; font-weight: 600;
                 font-size: 0.95rem; cursor: pointer;">
         View All Filings on SEC EDGAR →

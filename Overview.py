@@ -7,6 +7,7 @@ from datetime import datetime
 
 from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
+from src.ui import apply_chrome
 
 st.set_page_config(page_title="CLO Dashboard", page_icon="📊", layout="wide",
                    initial_sidebar_state="expanded")
@@ -15,14 +16,7 @@ from src.auth import check_password
 if not check_password():
     st.stop()
 
-st.markdown("""<style>
-    .block-container { padding-top: 1.5rem; }
-    div[data-testid="stSidebar"] { background: #1B4D3E; }
-    div[data-testid="stSidebar"] * { color: white !important; }
-    [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
-    .stDeployButton { display: none !important; }
-    [data-testid="stDecoration"] { display: none !important; }
-</style>""", unsafe_allow_html=True)
+apply_chrome()
 
 
 @st.cache_resource
@@ -102,7 +96,7 @@ if not holdings_df.empty:
         st.subheader("Deals by Manager (Top 15)")
         mgr_counts = deals_df["manager"].value_counts().head(15).sort_values()
         fig = px.bar(x=mgr_counts.values, y=mgr_counts.index, orientation="h",
-                     color_discrete_sequence=["#1B4D3E"],
+                     color_discrete_sequence=["#CBA255"],
                      labels={"x": "Number of Deals", "y": ""})
         fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20))
         st.plotly_chart(fig, use_container_width=True)
@@ -113,7 +107,7 @@ if not holdings_df.empty:
         price_data = price_data[price_data["implied_price"].between(0, 150)]
         if not price_data.empty:
             fig = px.histogram(price_data, x="implied_price", nbins=30,
-                              color_discrete_sequence=["#1B4D3E"],
+                              color_discrete_sequence=["#CBA255"],
                               labels={"implied_price": "Implied Price (¢ per $1 par)"})
             fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
                              yaxis_title="Number of Positions", showlegend=False)

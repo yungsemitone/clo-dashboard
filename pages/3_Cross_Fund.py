@@ -6,17 +6,13 @@ import plotly.graph_objects as go
 
 from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
+from src.ui import apply_chrome
 
 import yaml
 from pathlib import Path
 
 st.set_page_config(page_title="Cross-Fund Comparison", page_icon="🔀", layout="wide")
-st.markdown("""<style>
-    .block-container { padding-top: 1.5rem; }
-    [data-testid="stSidebarNav"] li:has(a[href*="Filing_Detail"]) { display: none; }
-    .stDeployButton { display: none !important; }
-    [data-testid="stDecoration"] { display: none !important; }
-</style>""", unsafe_allow_html=True)
+apply_chrome()
 
 from src.auth import check_password
 if not check_password():
@@ -127,7 +123,7 @@ if not top_spread.empty:
                 y=[row["deal_name"][:40]],
                 mode="markers",
                 marker=dict(size=12, color={
-                    "OXLC": "#1B4D3E", "ECC": "#2E7D5B", "OCCI": "#D4A843",
+                    "OXLC": "#CBA255", "ECC": "#2E7D5B", "OCCI": "#D4A843",
                     "PDCC": "#4A90D9", "PRIF": "#DC3545",
                 }.get(h["fund"], "#888")),
                 name=FUND_NAMES.get(h["fund"], h["fund"]),
@@ -146,7 +142,7 @@ if not top_spread.empty:
             ))
 
     # Add legend manually
-    for fund, color in [("OXLC", "#1B4D3E"), ("ECC", "#2E7D5B"), ("OCCI", "#D4A843"),
+    for fund, color in [("OXLC", "#CBA255"), ("ECC", "#2E7D5B"), ("OCCI", "#D4A843"),
                          ("PDCC", "#4A90D9"), ("PRIF", "#DC3545")]:
         if fund in multi_df["fund"].values:
             fig.add_trace(go.Scatter(
@@ -218,7 +214,7 @@ if not deal_holdings.empty:
         fig.add_trace(go.Bar(
             x=[FUND_NAMES.get(f, f) for f in priced["fund"]],
             y=priced["price"],
-            marker_color=["#1B4D3E", "#2E7D5B", "#D4A843", "#4A90D9", "#DC3545"][:len(priced)],
+            marker_color=["#CBA255", "#2E7D5B", "#D4A843", "#4A90D9", "#DC3545"][:len(priced)],
             text=priced["price"].round(1),
             textposition="auto",
         ))
