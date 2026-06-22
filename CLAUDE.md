@@ -73,6 +73,12 @@ total deal size.
   discounts, filing summary, historical filing cards. Most complex page.
 - `pages/5_Filing_Detail.py` — hidden from sidebar (CSS); reached via historical filing cards;
   reads ticker/date from `st.session_state`.
+- `pages/6_Position_Changes.py` — quarter-over-quarter holdings diff per fund (added/exited/
+  resized). Backed by `src/analytics/position_changes.py`.
+- `pages/7_Conviction.py` — manager/deal ranking by breadth of cross-fund ownership. Backed by
+  `src/analytics/conviction.py` (`latest_holdings()` is a reusable "latest filing per fund" helper).
+- `pages/8_Vintage.py` — implied price by CLO origination year. Backed by
+  `src/analytics/vintage.py`; ~40% of deals use Roman-numeral/series names with no parseable year.
 
 ## Auth (`src/auth.py`)
 
@@ -95,6 +101,8 @@ Render sets `PASSWORD`. Fallback `clo2026`.
 2. Some deal names retain CUSIP-style abbreviations (`_clean_deal_name()` misses cases).
 3. `report_snapshots` empty — blocked on trustee portal credentials.
 4. No active scraping cron (`.github/workflows/scrape.yml` exists but isn't wired up).
-5. AI summaries (`src/summarizer.py`) need `ANTHROPIC_API_KEY`; falls back to rule-based.
-6. Dashboard shows only the **latest** snapshot — the 4 quarters of history are largely
-   unused (opportunity: position-change tracking).
+5. AI summaries (`src/summarizer.py`) are wired into Fund Profiles' "View Filing Summary".
+   With `ANTHROPIC_API_KEY` set they use `claude-opus-4-8` (override via `CLO_SUMMARY_MODEL`);
+   without a key they fall back to a rule-based paragraph. Key read from env or `st.secrets`.
+6. The 4 quarters of history now feed the Position Changes page; most other pages still show
+   only the latest snapshot.
