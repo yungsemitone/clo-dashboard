@@ -1,16 +1,22 @@
-name: CLO Scraper - Daily Run
+name: Refresh CLO data
 
+# NPORT-P filings are quarterly, filed on staggered dates across the five funds.
+# A weekly run catches new filings within a week of posting without hammering EDGAR.
+# Trigger manually any time via the "Run workflow" button (workflow_dispatch).
 on:
   schedule:
-    # Run twice daily: 6 AM and 6 PM ET (10:00 and 22:00 UTC)
-    - cron: '0 10 * * *'
-    - cron: '0 22 * * *'
-  workflow_dispatch:  # Allow manual trigger
+    - cron: '0 11 * * 1'   # Mondays 11:00 UTC (~6-7am ET)
+  workflow_dispatch:
+
+# Required so the committed-DB push below can write back to the repo.
+# NOTE: repo Settings → Actions → General → Workflow permissions must also be
+# set to "Read and write permissions" for this token to be allowed to push.
+permissions:
+  contents: write
 
 jobs:
-  scrape:
+  refresh:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -24,55 +30,34 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Download previous database
-        uses: actions/download-artifact@v4
-        with:
-          name: clo-database
-          path: data/
-        continue-on-error: true  # First run won't have a previous db
+      - name: Re-scrape EDGAR (rebuilds data/clo_data.db from the latest filings)
+        run: python run_pipeline.py
+        env:
+          PYTHONPATH: .
 
-      - name: Initialize database
+      - name: Sanity-check the rebuilt database
+        # Guard against committing a broken/partial scrape (EDGAR hiccup, format
+        # change). Current real data is ~749 deals / ~2,686 holdings; fail well
+        # below that so a degraded run never overwrites good committed data.
         run: |
-          mkdir -p data/raw data/processed data/exports/csv data/exports/excel logs
           python -c "
-          from src.db import init_db
-          import yaml
-          with open('config.yaml') as f:
-              config = yaml.safe_load(f)
-          init_db(config)
-          print('Database initialized.')
+          import sqlite3, sys
+          c = sqlite3.connect('data/clo_data.db')
+          deals = c.execute('select count(*) from deals').fetchone()[0]
+          holdings = c.execute('select count(*) from fund_holdings').fetchone()[0]
+          print(f'deals={deals} holdings={holdings}')
+          if deals < 400 or holdings < 1500:
+              sys.exit('Scrape produced too little data — refusing to commit.')
           "
 
-      - name: Run SEC EDGAR scraper
-        run: python main.py scrape --trustee sec_edgar --limit 50
-        env:
-          PYTHONPATH: .
-
-      - name: Export to CSV
-        run: python main.py export --format both
-        env:
-          PYTHONPATH: .
-
-      - name: Upload database artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: clo-database
-          path: data/clo_data.db
-          retention-days: 90
-
-      - name: Upload exports
-        uses: actions/upload-artifact@v4
-        with:
-          name: clo-exports-${{ github.run_number }}
-          path: data/exports/
-          retention-days: 30
-
-      - name: Commit updated database
+      - name: Commit and push if the database changed
         run: |
           git config user.name "CLO Scraper Bot"
-          git config user.email "bot@clo-scraper.local"
-          git add data/clo_data.db data/exports/ || true
-          git diff --cached --quiet || git commit -m "Auto-update: scraped $(date -u +'%Y-%m-%d %H:%M UTC')"
-          git push || echo "Push failed - may need to pull first"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git config user.email "bot@users.noreply.github.com"
+          git add data/clo_data.db
+          if git diff --cached --quiet; then
+            echo "No changes — nothing to commit."
+          else
+            git commit -m "Auto-refresh CLO data $(date -u +'%Y-%m-%d')"
+            git push
+          fi

@@ -79,6 +79,8 @@ total deal size.
   `src/analytics/conviction.py` (`latest_holdings()` is a reusable "latest filing per fund" helper).
 - `pages/8_Vintage.py` — implied price by CLO origination year. Backed by
   `src/analytics/vintage.py`; ~40% of deals use Roman-numeral/series names with no parseable year.
+- `pages/9_Fund_Comparison.py` — two funds side by side: shared/unique managers and shared deals.
+  Backed by `src/analytics/fund_compare.py`.
 
 ## Auth (`src/auth.py`)
 
@@ -100,7 +102,9 @@ Render sets `PASSWORD`. Fallback `clo2026`.
 1. ~104 managers; some obscure SPVs still unmapped → show as raw names. Add to `MANAGER_MAP`.
 2. Some deal names retain CUSIP-style abbreviations (`_clean_deal_name()` misses cases).
 3. `report_snapshots` empty — blocked on trustee portal credentials.
-4. No active scraping cron (`.github/workflows/scrape.yml` exists but isn't wired up).
+4. Scraping cron is wired (`.github/workflows/scrape.yml`): weekly + manual, runs
+   `run_pipeline.py`, sanity-checks row counts, commits `data/clo_data.db` back (→ Render
+   redeploys). Requires repo Settings → Actions → Workflow permissions = "Read and write".
 5. AI summaries (`src/summarizer.py`) are wired into Fund Profiles' "View Filing Summary".
    With `ANTHROPIC_API_KEY` set they use `claude-opus-4-8` (override via `CLO_SUMMARY_MODEL`);
    without a key they fall back to a rule-based paragraph. Key read from env or `st.secrets`.
