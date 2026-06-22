@@ -24,7 +24,8 @@ def _get_api_key() -> str:
         return key
     try:
         import streamlit as st
-        return st.secrets.get("anthropic_api_key", "")
+        # Accept either casing in secrets.toml (env-var convention is uppercase).
+        return st.secrets.get("ANTHROPIC_API_KEY") or st.secrets.get("anthropic_api_key") or ""
     except Exception:
         return ""
 
