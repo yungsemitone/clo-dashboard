@@ -26,8 +26,27 @@ Diagnostics: `python dump_managers.py` lists every manager name currently in the
 ## Tech stack
 
 Python 3.12+ · Streamlit · SQLAlchemy + SQLite (`data/clo_data.db`, **committed to git**) ·
-Plotly · Pandas · Requests + BeautifulSoup (EDGAR scraping). Deployed on **Render**
-(auto-deploys on push to `main`). GitHub repo `yungsemitone/clo-dashboard` (private).
+Plotly · Pandas · Requests + BeautifulSoup (EDGAR scraping). GitHub repo
+`yungsemitone/clo-dashboard` (private).
+
+## Deploy (Fly.io)
+
+Primary host is **Fly.io**: app `clo-dashboard` (region `iad`, personal org) →
+https://clo-dashboard.fly.dev. Always-on (`min_machines_running = 1`, `auto_stop_machines =
+"off"` in `fly.toml`). Containerized via `Dockerfile` (the committed DB is baked into the
+image; `.dockerignore` keeps `secrets.toml` and scraper working dirs out).
+
+```bash
+fly deploy -a clo-dashboard          # build + ship (run from repo root)
+fly status -a clo-dashboard          # machine health
+fly secrets list -a clo-dashboard    # PASSWORD + ANTHROPIC_API_KEY (set as Fly secrets)
+fly logs -a clo-dashboard
+```
+
+Secrets are **Fly secrets**, not in the image: `PASSWORD` (auth gate) and `ANTHROPIC_API_KEY`
+(AI summaries). Set/rotate with `fly secrets set NAME=value -a clo-dashboard`. Fly does **not**
+auto-deploy on git push — run `fly deploy` (or wire a `flyctl deploy` step into CI). Render was
+the previous host (auto-deployed on push); it can be decommissioned.
 
 ## Data pipeline
 

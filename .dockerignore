@@ -1,0 +1,24 @@
+# Keep the image small and keep secrets out of it.
+.git
+.github
+venv/
+**/__pycache__/
+*.pyc
+.DS_Store
+
+# Secrets never go in the image — provided as Fly secrets / env vars at runtime.
+.streamlit/secrets.toml
+
+# Scraper working dirs and logs — not needed at runtime. The committed
+# data/clo_data.db IS included (it's the dashboard's data).
+data/raw/
+data/processed/
+data/exports/
+logs/
+
+# Local scratch (already gitignored too).
+test_edgar*.py
+parse_nport*.py
+
+# Docs not needed at runtime.
+*.md
