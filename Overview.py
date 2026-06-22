@@ -110,7 +110,9 @@ if not holdings_df.empty:
                               color_discrete_sequence=["#CBA255"],
                               labels={"implied_price": "Implied Price (¢ per $1 par)"})
             fig.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=20),
-                             yaxis_title="Number of Positions", showlegend=False)
+                             yaxis_title="Number of Positions", showlegend=False,
+                             bargap=0.04)
+            fig.update_traces(marker_line_color="#1A1513", marker_line_width=1.5)
             st.plotly_chart(fig, use_container_width=True)
 
     st.divider()
