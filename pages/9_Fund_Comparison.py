@@ -124,6 +124,11 @@ else:
 # --- Shared deals ---
 st.divider()
 st.subheader("Shared Deals")
+st.caption(
+    "Why might two funds mark the same deal differently? The **Cross-Fund Comparison** page "
+    "explains each case — a different tranche (debt vs. equity) versus a genuine mark-to-model "
+    "difference on the identical security."
+)
 if shared_deals.empty:
     st.info(
         f"{name_a} and {name_b} hold no individual CLO deals in common — they own different "

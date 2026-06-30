@@ -87,7 +87,10 @@ total deal size.
   expander-based detail.
 - `pages/2_Manager_Rankings.py` — leaderboard sortable by deals/par/avg price/funds.
 - `pages/3_Cross_Fund.py` — deals held by 2+ funds with real prices (≥1¢); dot plot of fund
-  marks sorted by widest valuation spread. Most analytically interesting page.
+  marks sorted by widest valuation spread. Most analytically interesting page. Per-deal valuation
+  reasoning (different tranche vs. genuine mark difference, detected via CUSIP) + a CLO primer,
+  backed by `src/analytics/valuation_notes.py`; optional AI "analyst note" via
+  `summarizer.generate_valuation_explainer` (falls back to the rule-based notes).
 - `pages/4_Fund_Profiles.py` — per-fund view; metrics use **latest filing only**; positions,
   discounts, filing summary, historical filing cards. Most complex page.
 - `pages/5_Filing_Detail.py` — hidden from sidebar (CSS); reached via historical filing cards;

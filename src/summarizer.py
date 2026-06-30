@@ -297,3 +297,65 @@ def _fallback_fund_summary(d: dict) -> str:
             summary += "reflecting a mix of performing and distressed positions."
 
     return summary
+
+
+# ---------------------------------------------------------------------------
+# Cross-fund valuation explainer — why one deal is marked differently by funds.
+# Grounded in the marks + CUSIPs we pass; falls back to the rule-based notes
+# from src/analytics/valuation_notes.py when no API key is set.
+# ---------------------------------------------------------------------------
+
+
+def generate_valuation_explainer(context: dict) -> str:
+    """
+    `context` keys: deal_name, manager, vintage, cusip_case ('same'/'different'/
+    'unknown'), marks (list of {fund, price, cusip}), fallback (rule-based text).
+    """
+    api_key = _get_api_key()
+    if not api_key:
+        return context.get("fallback", "")
+
+    try:
+        import anthropic
+
+        client = anthropic.Anthropic(api_key=api_key)
+
+        system_prompt = (
+            "You are a CLO analyst explaining to a smart non-expert why a CLO is valued where it "
+            "is, and why two funds mark the same deal differently. Write 2-4 short sentences in "
+            "plain English. Ground every claim in the facts provided plus general CLO capital-"
+            "structure knowledge (debt tranches near par, equity is the discounted first-loss "
+            "residual; CLO positions are illiquid Level-3 marks; different CUSIPs mean different "
+            "tranches). Do not invent specific metrics (OC tests, WARF, ratings) that aren't given. "
+            "No preamble, no bullet points."
+        )
+
+        marks = context.get("marks", [])
+        marks_txt = "; ".join(
+            f"{m['fund']} marks it at {m['price']:.1f}¢ (CUSIP {m.get('cusip') or 'n/a'})"
+            for m in marks if m.get("price") is not None
+        )
+        user = (
+            f"Deal: {context.get('deal_name')}\n"
+            f"Manager: {context.get('manager')}\n"
+            f"Vintage: {context.get('vintage') or 'unknown'}\n"
+            f"Same tranche across funds? {context.get('cusip_case')}\n"
+            f"Marks: {marks_txt}\n\n"
+            f"Explain why it's valued at these levels and why the funds differ."
+        )
+
+        message = client.messages.create(
+            model=_summary_model(),
+            max_tokens=400,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user}],
+        )
+        text = next((b.text for b in message.content if b.type == "text"), "").strip()
+        return text or context.get("fallback", "")
+
+    except ImportError:
+        logger.warning("anthropic package not installed. Using fallback valuation note.")
+        return context.get("fallback", "")
+    except Exception as e:
+        logger.error(f"Valuation explainer failed: {e}")
+        return context.get("fallback", "")
