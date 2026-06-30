@@ -340,8 +340,11 @@ def generate_valuation_explainer(context: dict) -> str:
             f"Manager: {context.get('manager')}\n"
             f"Vintage: {context.get('vintage') or 'unknown'}\n"
             f"Same tranche across funds? {context.get('cusip_case')}\n"
-            f"Marks: {marks_txt}\n\n"
-            f"Explain why it's valued at these levels and why the funds differ."
+            f"Marks: {marks_txt}\n"
+            f"Portfolio context: {context.get('portfolio_context') or 'n/a'}\n\n"
+            f"Explain why it's valued at these levels and why the funds differ. Use the portfolio "
+            f"context to weigh how much of the gap is each fund's house marking style versus a "
+            f"deal-specific view."
         )
 
         message = client.messages.create(

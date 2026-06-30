@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
 from src.ui import apply_chrome
-from src.analytics.valuation_notes import explain_cross_held, PRIMER
+from src.analytics.valuation_notes import explain_cross_held, PRIMER, fund_book_posture, pairwise_bias
 from src.analytics.vintage import parse_vintage
 from src.summarizer import generate_valuation_explainer, ai_summaries_enabled
 
@@ -234,7 +234,12 @@ if not deal_holdings.empty:
     # --- Why these marks differ ---
     sel_manager = deal_holdings["manager"].iloc[0]
     records = deal_holdings.to_dict("records")
-    note = explain_cross_held(selected_deal, sel_manager, records)
+    fund_postures = fund_book_posture(df)
+    deal_funds = list(deal_holdings["fund"])
+    pair_bias = pairwise_bias(df, deal_funds[0], deal_funds[1]) if len(deal_funds) == 2 else None
+    note = explain_cross_held(selected_deal, sel_manager, records,
+                              fund_postures=fund_postures, pair_bias=pair_bias,
+                              fund_names=FUND_NAMES)
 
     st.markdown("#### Why these marks differ")
     st.markdown(f"*{note['summary']}*")
@@ -253,6 +258,7 @@ if not deal_holdings.empty:
                     for r in records if r.get("price")
                 ],
                 "fallback": note["summary"] + " " + " ".join(note["reasons"]),
+                "portfolio_context": note.get("portfolio_context", ""),
             }
             with st.spinner("Thinking…"):
                 explainer = generate_valuation_explainer(ctx)

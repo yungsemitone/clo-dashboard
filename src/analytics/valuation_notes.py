@@ -41,7 +41,58 @@ def price_band(p: float) -> str:
             "recent-vintage equity expected to be repaid close to in full")
 
 
-def explain_cross_held(deal_name: str, manager: str, rows: list[dict]) -> dict:
+# Short, research-grounded read on each fund's mandate / "mindset". Sources:
+# fund disclosures + sector commentary (Seeking Alpha CEF/CLO coverage).
+FUND_STRATEGY = {
+    "OXLC": "Oxford Lane — the largest public CLO-equity fund; an aggressive, high-payout, equity-heavy book.",
+    "ECC": "Eagle Point — a CLO specialist that also issues its own (“Park”) CLOs; equity plus some CLO debt for steadiness.",
+    "OCCI": "OFS Credit — a smaller, conservatively-levered fund (high asset coverage) holding CLO equity and mezzanine.",
+    "PDCC": "Pearl Diver — a newer fund focused on secondary-market CLO equity and debt.",
+    "PRIF": "Priority Income — a Prospect Capital affiliate with a large, diversified CLO equity / mezzanine book.",
+}
+
+
+def fund_book_posture(df) -> dict:
+    """
+    Each fund's overall marking level — par-weighted average implied price across
+    its priced (>=1c) positions. A fund that marks its whole book low will mark
+    any shared deal low too, so this separates 'house style' from deal views.
+    df needs columns: fund, par, mv, price.
+    """
+    out = {}
+    for fund, g in df.groupby("fund"):
+        g = g[g["price"].notna() & (g["price"] >= 1)]
+        par = g["par"].sum()
+        if par > 0:
+            avg = g["mv"].sum() / par * 100
+            label = ("a deep-discount, conservatively-marked book" if avg < 35
+                     else "a mid-marked book" if avg < 50
+                     else "a richer-marked book")
+            out[fund] = {"avg": float(avg), "label": label, "n": int(len(g))}
+    return out
+
+
+def pairwise_bias(df, fund_a: str, fund_b: str) -> dict | None:
+    """
+    Systematic mark difference between two funds across every deal they both hold.
+    Returns {n, mean_diff} where mean_diff = avg(price_a - price_b). None if <2
+    shared priced deals. df needs columns: deal_id, fund, price.
+    """
+    a = df[df["fund"] == fund_a][["deal_id", "price"]].dropna()
+    b = df[df["fund"] == fund_b][["deal_id", "price"]].dropna()
+    m = a.merge(b, on="deal_id", suffixes=("_a", "_b"))
+    m = m[(m["price_a"] >= 1) & (m["price_b"] >= 1)]
+    if len(m) < 2:
+        return None
+    # mean_diff = avg(fund_a mark - fund_b mark); positive => fund_a marks higher.
+    return {"n": int(len(m)), "mean_diff": float((m["price_a"] - m["price_b"]).mean()),
+            "fund_a": fund_a, "fund_b": fund_b}
+
+
+def explain_cross_held(deal_name: str, manager: str, rows: list[dict],
+                       fund_postures: dict | None = None,
+                       pair_bias: dict | None = None,
+                       fund_names: dict | None = None) -> dict:
     """
     rows: list of {fund, price, cusip, par} for one deal across the funds holding it.
     Returns {summary, reasons (list of markdown strings), cusip_case}.
@@ -105,6 +156,67 @@ def explain_cross_held(deal_name: str, manager: str, rows: list[dict]) -> dict:
             f"page for the trend across years."
         )
 
+    # --- 4. Portfolio-level inference: house style vs. deal-specific view ---
+    # (only meaningful for the 2-fund case, which is every cross-held deal here)
+    portfolio_context = ""
+
+    def _name(f):
+        return (fund_names or {}).get(f, f)
+
+    # Only meaningful when both funds hold the SAME security — comparing a debt
+    # mark to an equity mark (different tranches) tells you nothing about marking style.
+    if cusip_case == "same" and len(priced) == 2 and fund_postures:
+        pr = sorted(priced, key=lambda r: r["price"])
+        lo_fund, hi_fund = pr[0]["fund"], pr[1]["fund"]
+        lo_p, hi_p = pr[0]["price"], pr[1]["price"]
+        this_gap = hi_p - lo_p
+        pa, pb = fund_postures.get(lo_fund), fund_postures.get(hi_fund)
+
+        if pa and pb:
+            reasons.append(
+                f"**House marking style.** {_name(hi_fund)} marks its overall book at "
+                f"~{pb['avg']:.0f}¢ ({pb['label']}); {_name(lo_fund)} at ~{pa['avg']:.0f}¢ "
+                f"({pa['label']}). A fund that marks everything more conservatively will carry "
+                f"this deal lower too — so part of the gap is house style, not a deal-specific call."
+            )
+            portfolio_context += (
+                f"{_name(hi_fund)} books-wide avg mark ~{pb['avg']:.0f}c; "
+                f"{_name(lo_fund)} ~{pa['avg']:.0f}c. "
+            )
+
+        if pair_bias:
+            n = pair_bias["n"]
+            # mean_diff = avg(fund_a - fund_b); positive => fund_a habitually marks higher.
+            higher_overall = pair_bias["fund_a"] if pair_bias["mean_diff"] > 0 else pair_bias["fund_b"]
+            typ = abs(pair_bias["mean_diff"])
+            if higher_overall == hi_fund:
+                if this_gap > max(typ * 1.5, typ + 6):
+                    tail = (f"wider than their usual ~{typ:.0f}¢ difference, so beyond "
+                            f"{_name(hi_fund)}'s generally richer marks there looks to be some "
+                            f"deal-specific optimism here (or extra caution from {_name(lo_fund)}).")
+                else:
+                    tail = (f"roughly in line with their usual ~{typ:.0f}¢ difference — this gap "
+                            f"looks mostly like house style, not a deal-specific disagreement.")
+            else:
+                tail = (f"the reverse of their usual pattern (across those deals {_name(higher_overall)} "
+                        f"normally marks higher), so this one reads as a genuine deal-specific "
+                        f"difference of opinion.")
+            reasons.append(
+                f"**Deal-specific or house style?** Across the {n} deals {_name(lo_fund)} and "
+                f"{_name(hi_fund)} both hold, {_name(higher_overall)} marks ~{typ:.0f}¢ higher on "
+                f"average. This deal's {this_gap:.0f}¢ gap is {tail}"
+            )
+            portfolio_context += (
+                f"Across {n} shared deals, {_name(higher_overall)} marks ~{typ:.0f}c higher on "
+                f"average; this deal's gap is {this_gap:.0f}c. "
+            )
+
+    # --- 5. Mandates / mindset ---
+    if fund_names is not None:
+        strat = [FUND_STRATEGY[r["fund"]] for r in rows if r["fund"] in FUND_STRATEGY]
+        if strat:
+            reasons.append("**Mandates.** " + "  ".join(strat))
+
     # --- Headline ---
     if len(priced) >= 2:
         lo = min(r["price"] for r in priced)
@@ -122,7 +234,8 @@ def explain_cross_held(deal_name: str, manager: str, rows: list[dict]) -> dict:
     else:
         summary = f"{deal_name} ({manager}) is held by {n_funds} funds."
 
-    return {"summary": summary, "reasons": reasons, "cusip_case": cusip_case}
+    return {"summary": summary, "reasons": reasons, "cusip_case": cusip_case,
+            "portfolio_context": portfolio_context}
 
 
 PRIMER = """
