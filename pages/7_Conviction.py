@@ -115,10 +115,11 @@ cross_held = dc[dc["n_funds"] >= 2].copy()
 max_funds = int(dc["n_funds"].max())
 
 st.caption(
-    f"Individual deals held by 2+ funds. Overlap is naturally thin at the deal level — "
-    f"each fund tends to own different vintages and tranches of the same managers — so the "
-    f"widest-held deal sits with {max_funds} funds. For how these funds' marks *disagree* on "
-    f"the same deal, see the **Cross-Fund Comparison** page."
+    f"Individual deals held by 2+ funds, with the widest-held sitting at {max_funds} funds. "
+    f"Deal-level overlap is narrower than manager-level overlap — the funds often own different "
+    f"vintages of the same manager's platform rather than the identical deal — but where they do "
+    f"land on the same CLO, it's directly comparable. For how their marks *disagree* on the same "
+    f"deal, see the **Cross-Fund Comparison** page."
 )
 
 c1, c2 = st.columns(2)

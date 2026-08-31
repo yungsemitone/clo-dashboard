@@ -8,6 +8,7 @@ Two core tables with real data:
 ReportSnapshot is kept for future use when trustee portal access is available.
 """
 
+import re
 from datetime import date, datetime
 
 from sqlalchemy import (
@@ -19,11 +20,32 @@ from sqlalchemy.orm import declarative_base, relationship
 Base = declarative_base()
 
 
+def deal_name_key(name: str) -> str:
+    """
+    Canonical identity key for a CLO deal.
+
+    Funds spell the same deal differently across filings ("Ares LXI CLO Ltd" vs
+    "Ares LXI CLO Ltd."), which previously created two `deals` rows and split the
+    holdings between them — hiding genuine cross-fund overlap. This collapses the
+    cosmetic differences: case, punctuation, spacing, and legal-entity suffixes.
+
+    Deliberately conservative. It does NOT merge names differing in their series
+    or tranche token (e.g. "2021-2A" vs "2021-2X"), which denote genuinely
+    different securities — better to under-merge than to fuse two real deals.
+    """
+    s = (name or "").upper()
+    s = re.sub(r"\b(LTD|LLC|LP|INC|DAC|CO|PLC)\b\.?", "", s)
+    return re.sub(r"[^A-Z0-9]", "", s)
+
+
 class Deal(Base):
     __tablename__ = "deals"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     deal_name = Column(String(200), nullable=False, unique=True)
+    # Canonical identity — see deal_name_key(). Deals are matched on this, not
+    # on the display name, so punctuation/case variants resolve to one deal.
+    name_key = Column(String(200), unique=True, index=True)
     manager = Column(String(200), nullable=False, index=True)
     trustee = Column(String(100))
     deal_size_mm = Column(Float)

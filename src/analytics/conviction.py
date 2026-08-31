@@ -21,7 +21,7 @@ def latest_holdings(session: Session) -> pd.DataFrame:
     """
     Every fund's holdings as of its most recent filing, one row per (deal, fund).
 
-    Columns: deal_id, deal_name, manager, fund, par, market_value, price.
+    Columns: deal_id, deal_name, manager, fund, par, market_value, price, cusip.
     """
     rows = (
         session.query(FundHolding, Deal)
@@ -30,7 +30,7 @@ def latest_holdings(session: Session) -> pd.DataFrame:
     )
     if not rows:
         return pd.DataFrame(columns=[
-            "deal_id", "deal_name", "manager", "fund", "par", "market_value", "price",
+            "deal_id", "deal_name", "manager", "fund", "par", "market_value", "price", "cusip",
         ])
 
     # Latest filing date per fund
@@ -55,6 +55,7 @@ def latest_holdings(session: Session) -> pd.DataFrame:
             "par": par,
             "market_value": mv,
             "price": price,
+            "cusip": (h.cusip or "").strip(),
         })
     return pd.DataFrame(records)
 

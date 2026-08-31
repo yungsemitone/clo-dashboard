@@ -8,6 +8,7 @@ from datetime import datetime
 from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
 from src.ui import apply_chrome
+from src.analytics.pricing import split_par_priced
 
 st.set_page_config(page_title="CLO Dashboard", page_icon="📊", layout="wide",
                    initial_sidebar_state="expanded")
@@ -77,8 +78,11 @@ col1.metric("Deals Tracked", len(deals))
 col2.metric("Unique Managers", deals_df["manager"].nunique())
 
 if not holdings_df.empty:
-    total_par = holdings_df["par_amount"].sum()
-    total_mv = holdings_df["market_value"].sum()
+    # Exclude non-par lines (participation fees, common units) — their "price"
+    # isn't cents-on-par and would inflate the average. See src/analytics/pricing.py.
+    par_priced, non_par = split_par_priced(holdings_df)
+    total_par = par_priced["par_amount"].sum()
+    total_mv = par_priced["market_value"].sum()
     avg_price = (total_mv / total_par * 100) if total_par > 0 else 0
     n_funds = holdings_df["source_fund"].nunique()
 

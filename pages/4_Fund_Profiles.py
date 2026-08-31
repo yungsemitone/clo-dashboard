@@ -10,6 +10,7 @@ from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
 from src.summarizer import generate_fund_summary, ai_summaries_enabled, DEFAULT_SUMMARY_MODEL
 from src.ui import apply_chrome
+from src.analytics.pricing import split_par_priced
 
 import yaml
 from pathlib import Path
@@ -129,8 +130,11 @@ filing_date = df["filing_date"].max() if not df.empty else None
 latest_df = df[df["filing_date"] == filing_date] if filing_date else df
 
 # --- Portfolio metrics (latest filing only) ---
-total_par = latest_df["par_amount"].sum()
-total_mv = latest_df["market_value"].sum()
+# Non-par lines (participation fees, common units) are excluded from the price
+# average — ECC's "Common Units" alone would lift it ~3¢. See src/analytics/pricing.py.
+par_priced_df, non_par_df = split_par_priced(latest_df)
+total_par = par_priced_df["par_amount"].sum()
+total_mv = par_priced_df["market_value"].sum()
 avg_price = (total_mv / total_par * 100) if total_par > 0 else 0
 n_positions = len(latest_df)
 n_managers = latest_df["manager"].nunique()

@@ -13,7 +13,21 @@ import requests
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 
-from src.models.schema import Deal, FundHolding
+from src.models.schema import Deal, FundHolding, deal_name_key
+
+
+def _prefer_display_name(new: str, old: str) -> bool:
+    """True if `new` is the more readable spelling of a deal name than `old`.
+
+    Filings mix "ARES XLIV CLO, LTD." with "Ares XLIV CLO Ltd." — same deal, and
+    we'd rather show the mixed-case one.
+    """
+    def score(n: str) -> float:
+        if not n:
+            return -1.0
+        return (0.0 if n.isupper() else 2.0) + sum(c.islower() for c in n) / len(n)
+
+    return score(new) > score(old)
 
 logger = logging.getLogger(__name__)
 
@@ -358,10 +372,14 @@ class NPORTScraper:
             deal_name = h["deal_name"]
             manager = h["manager"]
 
-            deal = db_session.query(Deal).filter_by(deal_name=deal_name).first()
+            # Match on the canonical key, not the display string, so that
+            # "Ares LXI CLO Ltd" and "Ares LXI CLO Ltd." are one deal.
+            key = deal_name_key(deal_name)
+            deal = db_session.query(Deal).filter_by(name_key=key).first()
             if not deal:
                 deal = Deal(
                     deal_name=deal_name,
+                    name_key=key,
                     manager=manager,
                     status="active",
                     source_url=h.get("source_url", ""),
@@ -369,6 +387,9 @@ class NPORTScraper:
                 db_session.add(deal)
                 db_session.flush()
                 deals_created += 1
+            elif _prefer_display_name(deal_name, deal.deal_name):
+                # Keep the most readable spelling among the variants we've seen.
+                deal.deal_name = deal_name
 
             from datetime import datetime as dt
             filing_date = dt.strptime(h["filing_date"], "%Y-%m-%d").date() if isinstance(h["filing_date"], str) else h["filing_date"]
