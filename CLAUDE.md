@@ -81,6 +81,8 @@ total deal size.
 
 ## Pages
 
+- `pages/0_Briefing.py` — auto-written read of the latest filings (headline marks, widest
+  cross-fund disagreements, hardest-hit managers, quarter positioning). `0_` sorts it first.
 - `Overview.py` — top metrics, deals-by-manager chart, implied-price histogram, all-deals
   table.
 - `pages/1_Deal_Browser.py` — pick a manager; deals grouped by series via `get_base_name()`;
@@ -103,6 +105,18 @@ total deal size.
   `src/analytics/vintage.py`; ~40% of deals use Roman-numeral/series names with no parseable year.
 - `pages/9_Fund_Comparison.py` — two funds side by side: shared/unique managers and shared deals.
   Backed by `src/analytics/fund_compare.py`.
+- `pages/10_Manager_Scorecard.py` — mark trajectories per manager over each fund's oldest→newest
+  filing (~510 tracked positions). Backed by `src/analytics/manager_scorecard.py`.
+
+**Deal identity.** Deals are matched on `name_key` (`deal_name_key()` in `schema.py`), not the
+display string — funds punctuate the same deal differently and exact matching split their holdings
+across two rows, hiding cross-fund overlap. The key ignores case/punctuation/entity suffixes but
+deliberately preserves series and tranche tokens. Changing it requires deleting the DB and
+re-running `run_pipeline.py` (`create_all` won't ALTER an existing table).
+
+**Price validity.** `src/analytics/pricing.py` guards price math: a few NPORT lines aren't
+par-denominated (participation fees, common units, nominal-par lines) and yield absurd implied
+prices. Exclude them from any new average — don't silently drop them, report the exclusion.
 
 ## Auth (`src/auth.py`)
 
