@@ -32,7 +32,8 @@ def _prefer_display_name(new: str, old: str) -> bool:
 logger = logging.getLogger(__name__)
 
 HEADERS = {
-    "User-Agent": "CLO-Research-Tool/1.0 (research@example.com)",
+    # SEC fair-access policy requires a real contact; generic UAs get throttled (403/429).
+    "User-Agent": "CLO-Dashboard research adensjuda@gmail.com",
     "Accept-Encoding": "gzip, deflate",
 }
 
@@ -340,6 +341,7 @@ class NPORTScraper:
 
     def scrape(self, limit: int = None) -> list[dict]:
         all_holdings = []
+        self.failed_filings = []
         funds = CLO_FUNDS[:limit] if limit else CLO_FUNDS
 
         for fund in funds:
@@ -352,13 +354,19 @@ class NPORTScraper:
 
                 for filing in filings[:4]:  # Last 4 quarterly filings
                     raw_xml = self._download_raw_xml(fund, filing)
-                    if raw_xml:
-                        holdings = self._parse_xml(raw_xml, fund, filing)
-                        all_holdings.extend(holdings)
-                        logger.info(f"  {fund['name']}: {len(holdings)} CLO holdings")
+                    holdings = self._parse_xml(raw_xml, fund, filing) if raw_xml else []
+                    if not holdings:
+                        # Previously this was silent, so one throttled request quietly
+                        # dropped a whole quarter (OCCI 2026-03-05 on 2026-11-02).
+                        logger.error(f"  {fund['name']} {filing['date']}: no holdings (download failed)")
+                        self.failed_filings.append(f"{fund['ticker']} {filing['date']}")
+                        continue
+                    all_holdings.extend(holdings)
+                    logger.info(f"  {fund['name']}: {len(holdings)} CLO holdings")
 
             except Exception as e:
                 logger.error(f"Failed processing {fund['name']}: {e}")
+                self.failed_filings.append(f"{fund['ticker']} (all)")
             time.sleep(1)
 
         logger.info(f"Total CLO holdings scraped: {len(all_holdings)}")
@@ -414,8 +422,8 @@ class NPORTScraper:
     def _get_filings(self, cik, form_type, count=3):
         url = f"https://data.sec.gov/submissions/CIK{cik}.json"
         try:
-            resp = self.session.get(url, timeout=30)
-            if resp.status_code != 200:
+            resp = self._get(url, timeout=30)
+            if resp is None:
                 return []
             data = resp.json()
             recent = data.get("filings", {}).get("recent", {})
@@ -438,40 +446,31 @@ class NPORTScraper:
             logger.error(f"Submissions API error: {e}")
             return []
 
-    def _download_raw_xml(self, fund, filing):
-        cik = fund["cik"]
-        acc_clean = filing["accession"].replace("-", "")
-        index_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_clean}/{filing['accession']}-index.htm"
-
-        try:
-            resp = self.session.get(index_url, timeout=30)
-            if resp.status_code != 200:
-                return None
-
-            soup = BeautifulSoup(resp.text, "lxml")
-            xml_href = None
-            for row in soup.select("table.tableFile tr"):
-                cells = row.find_all("td")
-                if len(cells) >= 3:
-                    doc_name = cells[2].get_text(strip=True)
-                    link = cells[2].find("a", href=True)
-                    if doc_name == "primary_doc.xml" and link:
-                        xml_href = link["href"]
-                        break
-
-            if not xml_href:
-                return None
-
-            xml_url = f"https://www.sec.gov{xml_href}"
-            resp = self.session.get(xml_url, timeout=60)
-            if resp.status_code == 200:
-                filename = f"nport_{fund['ticker']}_{filing['date']}.xml"
-                filepath = self.raw_dir / filename
-                filepath.write_bytes(resp.content)
-                return filepath
-        except Exception as e:
-            logger.error(f"Download error: {e}")
+    def _get(self, url, timeout=60, tries=5):
+        """GET with backoff on throttling / transient errors."""
+        for i in range(tries):
+            try:
+                resp = self.session.get(url, timeout=timeout)
+                if resp.status_code == 200:
+                    return resp
+                logger.warning(f"HTTP {resp.status_code} for {url} (try {i + 1}/{tries})")
+            except requests.RequestException as e:
+                logger.warning(f"{e} for {url} (try {i + 1}/{tries})")
+            time.sleep(2 * (i + 1))
         return None
+
+    def _download_raw_xml(self, fund, filing):
+        cik = str(int(fund["cik"]))
+        acc_clean = filing["accession"].replace("-", "")
+        # Raw XML lives at a fixed path; no need to scrape the index page.
+        xml_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_clean}/primary_doc.xml"
+        resp = self._get(xml_url)
+        if resp is None or b"<" not in resp.content[:200]:
+            return None
+        filename = f"nport_{fund['ticker']}_{filing['date']}.xml"
+        filepath = self.raw_dir / filename
+        filepath.write_bytes(resp.content)
+        return filepath
 
     def _parse_xml(self, filepath, fund, filing):
         content = filepath.read_text(errors="replace")

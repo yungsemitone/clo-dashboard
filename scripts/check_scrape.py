@@ -7,7 +7,11 @@ Requires >= RATIO of baseline counts AND absolute floors.
 import os, sqlite3, sys
 
 RATIO = float(os.environ.get("SCRAPE_MIN_RATIO", "0.90"))
-FLOORS = {"deals": 650, "fund_holdings": 2300}
+# Floors reflect the post-dedup (name_key, Aug 2026) universe: ~648 deals / ~2,438
+# holdings. The old 650 floor sat above the real count and failed every full scrape.
+FLOORS = {"deals": 600, "fund_holdings": 2300}
+FUNDS = ["ECC", "OCCI", "OXLC", "PDCC", "PRIF"]
+FILINGS_PER_FUND = 4
 
 
 def counts(path):
@@ -32,6 +36,21 @@ def check(new, base):
     return ok
 
 
+def check_filings(path):
+    """Every fund must have its last 4 filings — catches one dropped quarter,
+    which the ratio check alone misses (79 of 2,438 rows is only -3%)."""
+    ok = True
+    c = sqlite3.connect(path)
+    for f in FUNDS:
+        n = c.execute("select count(distinct filing_date) from fund_holdings where source_fund=?", (f,)).fetchone()[0]
+        if n < FILINGS_PER_FUND:
+            print(f"{f}: only {n}/{FILINGS_PER_FUND} filings SHORT")
+            ok = False
+    return ok
+
+
 if __name__ == "__main__":
     new_db, base_db = sys.argv[1], sys.argv[2]
-    sys.exit(0 if check(counts(new_db), counts(base_db)) else 1)
+    ok = check(counts(new_db), counts(base_db))
+    ok = check_filings(new_db) and ok
+    sys.exit(0 if ok else 1)

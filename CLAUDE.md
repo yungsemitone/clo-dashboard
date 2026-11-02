@@ -63,8 +63,8 @@ Point), **OCCI** (OFS Credit), **PDCC** (Pearl Diver), **PRIF** (Priority Income
 6. Stores in `deals` (one row per unique CLO) and `fund_holdings` (one row per
    fund-deal-filing-date).
 
-Current data: ~749 deals, ~2,686 holdings, ~104 managers, 4 quarters per fund (latest
-filings Feb–Mar 2026).
+Current data: ~648 deals, ~2,438 holdings, 4 quarters per fund (as of Nov 2026). The older
+~749/~2,686 figures predate the Aug 2026 name_key dedup and should not be used as a target.
 
 Key derived metric: **implied price** = market_value / par × 100 (cents on the dollar). See
 `FundHolding.implied_price` in `schema.py`. Par is the *fund's position* face value, not

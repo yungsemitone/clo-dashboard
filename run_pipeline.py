@@ -59,6 +59,10 @@ def main():
     print(f"  Unique managers: {unique_managers}")
     print(f"\n  Run: streamlit run app.py")
 
+    if scraper.failed_filings:
+        print(f"\nERROR: {len(scraper.failed_filings)} filing(s) failed: {scraper.failed_filings}")
+        raise SystemExit(1)
+
     session.close()
 
 

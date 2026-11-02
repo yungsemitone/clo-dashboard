@@ -36,15 +36,16 @@ jobs:
       - name: Re-scrape EDGAR with sanity check and retries
         # Guard against committing a broken/partial scrape (EDGAR hiccup, format
         # change). Requires >=90% of the previously committed counts with absolute
-        # floors (650 deals / 2,300 holdings) — see scripts/check_scrape.py.
+        # floors (600 deals / 2,300 holdings), all 4 filings per fund, and a
+        # clean run_pipeline.py exit (any filing that fails to download fails the attempt) — see scripts/check_scrape.py.
         # Retries up to 2 more times; if still short, restores the committed DB
         # and fails the job so nothing is committed or deployed.
         run: |
           for attempt in 1 2 3; do
             echo "::group::Scrape attempt $attempt"
-            python run_pipeline.py || echo "run_pipeline.py exited non-zero"
+            rc=0; python run_pipeline.py || rc=$?
             echo "::endgroup::"
-            if python scripts/check_scrape.py data/clo_data.db /tmp/baseline.db; then
+            if [ "$rc" -eq 0 ] && python scripts/check_scrape.py data/clo_data.db /tmp/baseline.db; then
               echo "Scrape passed on attempt $attempt"; exit 0
             fi
             echo "Attempt $attempt below thresholds"
