@@ -228,3 +228,12 @@ class MacroSeries(Base):
     value = Column(Float)
 
     __table_args__ = (UniqueConstraint("series_id", "obs_date", name="uq_macro"),)
+
+
+def obligor_match_key(key_or_name: str) -> str:
+    """Looser borrower key for cross-fund matching: first two significant tokens,
+    each truncated to 8 chars. Handles truncated NPORT names ("PROJECT ALPHA
+    INTERMEDIA") and suffix noise; may rarely merge two borrowers that share
+    their first two words."""
+    toks = obligor_key(key_or_name).split()
+    return " ".join(t[:8] for t in toks[:2])
