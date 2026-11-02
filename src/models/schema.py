@@ -146,3 +146,85 @@ class ReportSnapshot(Base):
         UniqueConstraint("deal_id", "report_date", name="uq_deal_report_date"),
         Index("ix_snapshot_date", "report_date"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Loan-level data (Portfolio Shifts & Signals)
+#
+# The CLO equity funds above only disclose CLO *tranches*, never the underlying
+# loans. Loan-level positions come from NPORT-P filings of public closed-end
+# loan funds run by the same CLO managers' leveraged-loan desks (Blackstone,
+# Invesco, Eaton Vance/MSIM, BlackRock, Nuveen, KKR, Ares). Every row is a real
+# disclosed position. Industry comes from each fund's own N-CSR schedule of
+# investments (fund-reported industry headings).
+# ---------------------------------------------------------------------------
+
+def obligor_key(name: str) -> str:
+    """Canonical borrower key: drops case, punctuation and legal-entity noise so
+    "Medline Borrower, LP" and "MEDLINE BORROWER LP" match across funds."""
+    s = (name or "").lower().replace("&", " and ")
+    s = re.sub(r"[^a-z0-9 ]", " ", s)
+    noise = {"inc", "llc", "lp", "llp", "ltd", "limited", "corp", "corporation", "co",
+             "company", "plc", "sarl", "s", "a", "sa", "bv", "b", "v", "gmbh", "ag",
+             "the", "holdings", "holding", "holdco", "intermediate", "borrower",
+             "parent", "buyer", "bidco", "finco", "acquisition", "acquisitions",
+             "us", "u", "usa", "group", "l", "p", "c", "lux", "luxembourg",
+             "ii", "iii", "iv", "i", "de", "midco", "topco", "issuer", "merger", "sub"}
+    toks = [t for t in s.split() if t not in noise]
+    return " ".join(toks) or s.strip()
+
+
+class LoanHolding(Base):
+    """One loan facility position from a loan fund's NPORT-P (assetCat LON)."""
+    __tablename__ = "loan_holdings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fund = Column(String(20), nullable=False, index=True)      # ticker, e.g. EFR
+    manager = Column(String(100), nullable=False, index=True)
+    report_date = Column(Date, nullable=False, index=True)     # period end
+    filing_date = Column(Date)
+    obligor = Column(String(200), nullable=False)
+    obligor_key = Column(String(200), nullable=False, index=True)
+    title = Column(String(300))
+    cusip = Column(String(20))
+    loanx_id = Column(String(20))
+    facility_key = Column(String(300), index=True)
+    currency = Column(String(5))
+    balance = Column(Float)        # par / principal amount (local ccy)
+    value_usd = Column(Float)
+    price = Column(Float)          # value / par x 100, in local currency (FX-adjusted)
+    pct_nav = Column(Float)
+    maturity = Column(Date)
+    coupon = Column(Float)
+    is_default = Column(Integer, default=0)
+    is_pik = Column(Integer, default=0)
+    fair_value_level = Column(String(5))
+    source_url = Column(Text)
+
+    __table_args__ = (Index("ix_loan_fund_date", "fund", "report_date"),)
+
+
+class ObligorIndustry(Base):
+    """Fund-reported industry for a borrower, parsed from N-CSR schedules."""
+    __tablename__ = "obligor_industry"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    obligor_key = Column(String(200), nullable=False, index=True)
+    industry_raw = Column(String(200), nullable=False)
+    sector = Column(String(100))          # normalized macro sector bucket
+    source_fund = Column(String(20))
+    source_url = Column(Text)
+
+    __table_args__ = (UniqueConstraint("obligor_key", "source_fund", name="uq_obl_ind"),)
+
+
+class MacroSeries(Base):
+    """Public macro series (FRED keyless CSV)."""
+    __tablename__ = "macro_series"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    series_id = Column(String(40), nullable=False, index=True)
+    obs_date = Column(Date, nullable=False)
+    value = Column(Float)
+
+    __table_args__ = (UniqueConstraint("series_id", "obs_date", name="uq_macro"),)
