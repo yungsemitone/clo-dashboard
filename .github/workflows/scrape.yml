@@ -30,25 +30,31 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Re-scrape EDGAR (rebuilds data/clo_data.db from the latest filings)
-        run: python run_pipeline.py
+      - name: Snapshot committed database as baseline
+        run: cp data/clo_data.db /tmp/baseline.db || true
+
+      - name: Re-scrape EDGAR with sanity check and retries
+        # Guard against committing a broken/partial scrape (EDGAR hiccup, format
+        # change). Requires >=90% of the previously committed counts with absolute
+        # floors (650 deals / 2,300 holdings) — see scripts/check_scrape.py.
+        # Retries up to 2 more times; if still short, restores the committed DB
+        # and fails the job so nothing is committed or deployed.
+        run: |
+          for attempt in 1 2 3; do
+            echo "::group::Scrape attempt $attempt"
+            python run_pipeline.py || echo "run_pipeline.py exited non-zero"
+            echo "::endgroup::"
+            if python scripts/check_scrape.py data/clo_data.db /tmp/baseline.db; then
+              echo "Scrape passed on attempt $attempt"; exit 0
+            fi
+            echo "Attempt $attempt below thresholds"
+            [ "$attempt" -lt 3 ] && sleep 60
+          done
+          cp /tmp/baseline.db data/clo_data.db || true
+          echo "::error::Scrape produced too little data after 3 attempts — refusing to commit."
+          exit 1
         env:
           PYTHONPATH: .
-
-      - name: Sanity-check the rebuilt database
-        # Guard against committing a broken/partial scrape (EDGAR hiccup, format
-        # change). Current real data is ~749 deals / ~2,686 holdings; fail well
-        # below that so a degraded run never overwrites good committed data.
-        run: |
-          python -c "
-          import sqlite3, sys
-          c = sqlite3.connect('data/clo_data.db')
-          deals = c.execute('select count(*) from deals').fetchone()[0]
-          holdings = c.execute('select count(*) from fund_holdings').fetchone()[0]
-          print(f'deals={deals} holdings={holdings}')
-          if deals < 400 or holdings < 1500:
-              sys.exit('Scrape produced too little data — refusing to commit.')
-          "
 
       - name: Refresh loan-level holdings, industries and FRED macro (Portfolio Shifts page)
         # Incremental: replaces a fund's loans only when its scrape returned rows,
