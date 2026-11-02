@@ -362,3 +362,32 @@ def generate_valuation_explainer(context: dict) -> str:
     except Exception as e:
         logger.error(f"Valuation explainer failed: {e}")
         return context.get("fallback", "")
+
+
+def generate_trade_rationale(ctx: dict) -> str:
+    """2–3 sentence 'why is this loan priced here' note for the opportunity screen.
+
+    Uses a fast model (CLO_SIGNAL_MODEL, default claude-haiku-4-5). Returns ""
+    without a key or on error — callers then show the rule-based read only.
+    """
+    api_key = _get_api_key()
+    if not api_key:
+        return ""
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        facts = "\n".join(f"- {k}: {v}" for k, v in ctx.items())
+        msg = client.messages.create(
+            model=os.environ.get("CLO_SIGNAL_MODEL", "claude-haiku-4-5"),
+            max_tokens=220,
+            system=("You are a leveraged-loan / CLO trader explaining to a new credit analyst why a "
+                    "loan trades where it does. Use only the facts given (they come from public "
+                    "NPORT-P filings); ratings are NOT known, so speak of price-implied rating risk. "
+                    "In 2-3 sentences: say whether the discount looks technical (CLO CCC-bucket, "
+                    "discount-obligation, OC-driven selling) or fundamental, and what to diligence."),
+            messages=[{"role": "user", "content": facts}],
+        )
+        return msg.content[0].text.strip()
+    except Exception as e:  # pragma: no cover - network/key issues
+        logger.warning("trade rationale failed: %s", e)
+        return ""
