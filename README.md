@@ -64,3 +64,10 @@ If you set an `ANTHROPIC_API_KEY` environment variable (or add it to `.streamlit
 ## Tech Stack
 
 Python, Streamlit, Plotly, SQLAlchemy/SQLite, pdfplumber, Anthropic API, GitHub Actions
+
+
+## Portfolio Shifts (loan-level) — page 11
+- Data: `loan_holdings` (NPORT-P loan positions of closed-end loan funds run by CLO managers' loan desks: BSL/Blackstone, VVR/Invesco, EFR/Eaton Vance, FRA/BlackRock, JFR/Nuveen, KIO/KKR, ARDC/Ares; last 6 quarterly filings), `obligor_industry` (N-CSR schedule-of-investments headings), `macro_series` (FRED keyless CSV).
+- Refresh: `PYTHONPATH=. python run_loan_pipeline.py` (incremental; does not touch tranche tables). Runs in the weekly workflow after the tranche scrape.
+- Logic: `src/analytics/loan_signals.py` (position changes, likely-reason labels from CLO mechanics, consensus, momentum, opportunity screen). Tests: `python -m pytest -q tests`.
+- These funds are proxies for the managers' CLO books, not the CLOs themselves; no ratings in NPORT, so CCC/discount-obligation labels are price-based inferences.
