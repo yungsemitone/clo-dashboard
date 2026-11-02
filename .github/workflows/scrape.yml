@@ -50,6 +50,21 @@ jobs:
               sys.exit('Scrape produced too little data — refusing to commit.')
           "
 
+      - name: Refresh loan-level holdings, industries and FRED macro (Portfolio Shifts page)
+        # Incremental: replaces a fund's loans only when its scrape returned rows,
+        # so a partial EDGAR failure keeps the previously committed data.
+        continue-on-error: true
+        run: |
+          python run_loan_pipeline.py
+          python -c "
+          import sqlite3, sys
+          n = sqlite3.connect('data/clo_data.db').execute('select count(*) from loan_holdings').fetchone()[0]
+          print(f'loan_holdings={n}')
+          if n < 8000: sys.exit('Loan scrape looks thin')
+          "
+        env:
+          PYTHONPATH: .
+
       - name: Commit and push if the database changed
         id: commit
         run: |
