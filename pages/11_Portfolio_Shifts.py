@@ -121,7 +121,8 @@ with tabs[0]:
         st.dataframe(exits, hide_index=True, width="stretch")
     with e2:
         fig = px.bar(exits.sort_values("Par cut $M"), x="Par cut $M", y="Exit type", orientation="h",
-                     color="Exit type", color_discrete_map=EXIT_TYPE_COLORS, text="Trades")
+                     color="Exit type", color_discrete_map=EXIT_TYPE_COLORS, custom_data=["Trades"])
+        fig.update_traces(hovertemplate="%{y}<br>%{x:.1f}M par · %{customdata[0]} trade(s)<extra></extra>")
         fig.update_layout(height=210, xaxis_title="Par reduced ($M)", yaxis_title="",
                           showlegend=False, margin=dict(l=0, r=0, t=10, b=0))
         st.plotly_chart(fig, width="stretch")
@@ -130,8 +131,9 @@ with tabs[0]:
     r = sells.groupby("likely_reason").agg(trades=("obligor", "count"),
                                            par_sold_mm=("par_change", lambda s: -s.sum() / 1e6)).reset_index()
     fig = px.bar(r.sort_values("par_sold_mm"), x="par_sold_mm", y="likely_reason", orientation="h",
-                 text="trades", color_discrete_sequence=[CLARET])
-    fig.update_layout(height=340, xaxis_title="Par sold ($mm, latest quarter)", yaxis_title="",
+                 custom_data=["trades"], color_discrete_sequence=[CLARET])
+    fig.update_traces(hovertemplate="%{y}<br>%{x:.1f}M par · %{customdata[0]} exit/trim(s)<extra></extra>")
+    fig.update_layout(height=340, xaxis_title="Par reduced ($M, latest quarter)", yaxis_title="",
                       margin=dict(l=0, r=0, t=10, b=0))
     st.plotly_chart(fig, width="stretch")
 
@@ -177,7 +179,8 @@ with tabs[1]:
         br["Par cut $M"] = br["Par cut $M"].round(1)
         br = br.rename(columns={"exit_type": "Exit type"})
         fig = px.bar(br, x="Exit type", y="Par cut $M", color="Exit type",
-                     color_discrete_map=EXIT_TYPE_COLORS, text="Trades")
+                     color_discrete_map=EXIT_TYPE_COLORS, custom_data=["Trades"])
+        fig.update_traces(hovertemplate="%{x}<br>%{y:.1f}M par · %{customdata[0]} trade(s)<extra></extra>")
         fig.update_layout(height=240, showlegend=False, margin=dict(l=0, r=0, t=10, b=0))
         st.plotly_chart(fig, width="stretch")
     show = v[["obligor", "action", "exit_type", "par_prev", "par_curr", "price_curr", "likely_reason", "why"]].copy()
@@ -298,9 +301,17 @@ with tabs[4]:
         op = op[op.sector.isin(sectors)]
     view = op[["obligor", "technical_score", "signal_read", "price", "sellers", "buyers"]].copy()
     view["price"] = view.price.round(1)
-    st.dataframe(view.rename(columns={"obligor": "Borrower", "technical_score": "Technical Score",
-                                      "signal_read": "Why It Screens", "price": "Price ¢", "sellers": "Sellers", "buyers": "Buyers"}),
-                 hide_index=True, width="stretch", height=460)
+    view["Primary signal"] = view.signal_read.str.split(";").str[0]
+    st.dataframe(view.drop(columns="signal_read").rename(columns={
+        "obligor": "Borrower", "technical_score": "Technical Score", "price": "Price ¢",
+        "sellers": "Sellers", "buyers": "Buyers"}),
+        hide_index=True, width="stretch", height=460,
+        column_config={"Primary signal": st.column_config.TextColumn(width="large")})
+    if not op.empty:
+        with st.expander("Full opportunity rationale"):
+            selected_signal = st.selectbox("Borrower", op.obligor.tolist(), key="opportunity_rationale")
+            signal = op.loc[op.obligor == selected_signal].iloc[0].signal_read
+            st.markdown(signal)
     from src.summarizer import ai_summaries_enabled, generate_trade_rationale
     if ai_summaries_enabled() and not op.empty:
         who = st.selectbox("AI trader's read on…", op.obligor.head(30).tolist())

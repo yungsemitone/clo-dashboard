@@ -163,9 +163,10 @@ if not top_spread.empty:
         xaxis_title="Implied Price (¢)",
         yaxis=dict(categoryorder="array", categoryarray=deal_order),
         height=max(400, len(top_spread) * 35),
-        margin=dict(l=20, r=20, t=20, b=40),
+        margin=dict(l=300, r=40, t=20, b=40),
         legend=dict(orientation="h", y=-0.15),
     )
+    fig.update_yaxes(automargin=True)
     st.plotly_chart(fig, use_container_width=True)
 
 st.divider()

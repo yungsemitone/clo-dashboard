@@ -74,19 +74,26 @@ else:
         marker_color=["#D6705F" if d < 0 else "#6FA368" for d in top["delta"]],
         marker_line_color="#1A1513", marker_line_width=1,
         customdata=top[["n_positions", "n_funds", "price_then", "price_now"]],
-        hovertemplate=("<b>%{y}</b><br>%{x:+.1f}¢<br>"
+        text=top.delta.map(lambda d: f"{d:+.2f}¢"), textposition="outside", cliponaxis=False,
+        hovertemplate=("<b>%{y}</b><br>%{x:+.2f}¢<br>"
                        "%{customdata[2]:.0f}¢ → %{customdata[3]:.0f}¢<br>"
                        "%{customdata[0]} positions · %{customdata[1]} funds<extra></extra>"),
     ))
     fig.add_vline(x=overall, line_dash="dash", line_color="#CBA255",
                   annotation_text=f"Market {overall:+.1f}¢", annotation_position="top")
-    fig.update_layout(height=420, margin=dict(l=20, r=20, t=20, b=20),
-                      xaxis_title="Starting-par-weighted mark change (¢)")
+    span = max(float(top.delta.max() - top.delta.min()), 1.0)
+    pad = max(span * 0.14, 1.0)
+    fig.update_layout(height=420, margin=dict(l=240, r=60, t=30, b=20),
+                      xaxis_title="Starting-par-weighted mark change (¢)",
+                      xaxis_range=[min(float(top.delta.min()), overall, 0.0) - pad,
+                                   max(float(top.delta.max()), overall, 0.0) + pad])
+    fig.update_yaxes(automargin=True)
+    st.caption("Exact values are shown beside each bar, including near-zero changes.")
     st.plotly_chart(fig, width="stretch")
     with st.expander("Full manager ranking chart"):
         full_fig = go.Figure(go.Bar(y=ranked.manager, x=ranked.delta, orientation="h",
                                    marker_color=["#D6705F" if d < 0 else "#6FA368" for d in ranked.delta]))
-        full_fig.update_layout(height=max(500, len(ranked) * 24), margin=dict(l=20, r=20, t=20, b=20),
+        full_fig.update_layout(height=max(500, len(ranked) * 24), margin=dict(l=240, r=40, t=20, b=20),
                                xaxis_title="Starting-par-weighted mark change (¢)")
         st.plotly_chart(full_fig, width="stretch")
 

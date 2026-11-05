@@ -106,10 +106,10 @@ else:
         fig = go.Figure(go.Bar(
             x=breakdown["Par $M"], y=breakdown["Exit type"], orientation="h",
             marker_color=[EXIT_TYPE_COLORS.get(t) for t in breakdown["Exit type"]],
-            text=breakdown["Deals"].map(lambda n: f"{n} deal" + ("s" if n != 1 else "")),
-            textposition="auto",
+            customdata=breakdown["Deals"],
+            hovertemplate="%{y}<br>%{x:.1f}M par · %{customdata} deal(s)<extra></extra>",
         ))
-        fig.update_layout(height=180, margin=dict(l=0, r=10, t=5, b=0),
+        fig.update_layout(height=180, margin=dict(l=0, r=30, t=5, b=0),
                           xaxis_title="Exited par ($M)", yaxis_title="", showlegend=False)
         st.plotly_chart(fig, width="stretch")
     odd_prices = exited[exited["price"].gt(150)]
@@ -119,11 +119,21 @@ else:
     display = exited.copy()
     display["Par $M"] = (display["par"] / 1e6).round(2)
     display["Price ¢"] = display["price"].round(1)
-    display = display[["deal_name", "manager", "Par $M", "Price ¢", "exit_type", "exit_why"]].rename(columns={
-        "deal_name": "Deal", "manager": "Manager", "exit_type": "Exit type", "exit_why": "Why",
+    display["Why"] = display.apply(
+        lambda r: ("Reset twin added" if r["exit_type"] == "Reset / refi"
+                   else "Near-par note/facility" if r["exit_type"] == "Call / liquidation" and pd.notna(r["price"]) and r["price"] >= 90
+                   else "Residual below 5¢" if r["exit_type"] == "Call / liquidation"
+                   else "No usable prior mark" if pd.isna(r["price"])
+                   else "No reset twin"), axis=1)
+    display = display[["deal_name", "manager", "Par $M", "Price ¢", "exit_type", "Why"]].rename(columns={
+        "deal_name": "Deal", "manager": "Manager", "exit_type": "Exit type",
     })
     st.dataframe(display, width="stretch", hide_index=True,
-                 column_config={"Why": st.column_config.TextColumn(width="large")})
+                 column_config={"Why": st.column_config.TextColumn(width="medium")})
+    with st.expander("Full exit rationale"):
+        selected_exit = st.selectbox("Deal", exited.deal_name.tolist(), key="exit_rationale_deal")
+        rationale = exited.loc[exited.deal_name == selected_exit].iloc[0]
+        st.markdown(f"**{rationale.exit_type}** — {rationale.exit_why}")
 
 with st.expander(f"Added positions ({s['n_added']})", expanded=False):
     if added.empty:
