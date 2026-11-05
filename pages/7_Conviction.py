@@ -7,12 +7,12 @@ import plotly.express as px
 
 from src.db import init_db, get_session
 from src.analytics.conviction import latest_holdings, deal_conviction, manager_conviction
-from src.ui import apply_chrome
+from src.ui import apply_chrome, page_intro
 
 import yaml
 from pathlib import Path
 
-st.set_page_config(page_title="Conviction Ranking", page_icon="🎯", layout="wide")
+st.set_page_config(page_title="Conviction", page_icon="🎯", layout="wide")
 apply_chrome()
 
 from src.auth import check_password
@@ -37,8 +37,7 @@ FUND_COUNT_COLORS = {1: "#C8DAD3", 2: "#7BA098", 3: "#4A7A68", 4: "#2E5E4A", 5: 
 
 session = get_db()
 
-st.title("🎯 Conviction Ranking")
-st.caption("Breadth of ownership across the five funds — which managers and deals the most funds collectively back")
+page_intro("Ownership Overlap", "Use ownership breadth as a simple signal: managers and deals held by more independent funds have broader sponsorship, though not necessarily better returns.", "🎯")
 
 holdings = latest_holdings(session)
 if holdings.empty:
@@ -52,10 +51,9 @@ dc = deal_conviction(session, holdings)
 # ============================================================
 # Manager conviction — the headline signal
 # ============================================================
-st.subheader("Manager Conviction")
+st.subheader("Manager Ownership Breadth")
 st.caption(
-    "How many of the five funds hold *any* deal from each manager. When independent "
-    "funds all back the same manager, that breadth is a collective vote of confidence."
+    "Latest filing per fund. Counts show breadth of ownership—not intentional conviction or expected returns."
 )
 
 held_by_all = mc[mc["n_funds"] == n_total_funds]
@@ -87,7 +85,7 @@ with dcol2:
     fig = px.bar(
         top_mgr, x=top_mgr["total_par"] / 1e6, y="manager", orientation="h",
         color="n_funds", color_continuous_scale=["#C8DAD3", "#CBA255"],
-        labels={"x": "Total Par ($M)", "y": "", "color": "# Funds"},
+        labels={"x": "Combined Par $M", "manager": "Manager", "n_funds": "Number of Funds"},
         range_color=[1, n_total_funds],
     )
     fig.update_layout(height=380, margin=dict(l=10, r=10, t=30, b=10))
@@ -119,7 +117,7 @@ st.caption(
     f"Deal-level overlap is narrower than manager-level overlap — the funds often own different "
     f"vintages of the same manager's platform rather than the identical deal — but where they do "
     f"land on the same CLO, it's directly comparable. For how their marks *disagree* on the same "
-    f"deal, see the **Cross-Fund Comparison** page."
+    f"deal, see the **Cross Fund** page."
 )
 
 c1, c2 = st.columns(2)
@@ -138,5 +136,4 @@ else:
     })
     st.dataframe(deal_display, use_container_width=True, hide_index=True, height=400)
 
-st.divider()
-st.caption("All data sourced from SEC EDGAR NPORT-P filings · latest filing per fund.")
+st.caption(f"Latest filing per fund, {holdings.filing_date.min():%b %Y}–{holdings.filing_date.max():%b %Y}; {len(mc)} managers represented. Other pages may include historical filings, so manager counts can differ.")

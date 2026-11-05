@@ -7,7 +7,7 @@ import plotly.express as px
 
 from src.db import init_db, get_session
 from src.analytics.vintage import vintage_summary, unknown_vintage_count
-from src.ui import apply_chrome
+from src.ui import apply_chrome, page_intro
 
 import yaml
 from pathlib import Path
@@ -31,8 +31,7 @@ def get_db():
 
 session = get_db()
 
-st.title("📅 Vintage Analysis")
-st.caption("How CLO equity is priced by origination year — across the funds' latest filings")
+page_intro("Vintage", "Compare pricing and remaining par by origination year to see how older, amortizing CLOs differ from newer deals.", "📅")
 
 vs = vintage_summary(session)
 n_unknown = unknown_vintage_count(session)
@@ -47,9 +46,11 @@ min_year, max_year = int(vs["vintage"].min()), int(vs["vintage"].max())
 m1, m2, m3 = st.columns(3)
 m1.metric("Deals with a Vintage", n_known)
 m2.metric("Vintage Span", f"{min_year}–{max_year}")
-m3.metric("No Parseable Year", n_unknown)
+m3.metric("Year Unavailable", n_unknown)
 
-st.divider()
+st.warning(f"Coverage: {n_known} deals have a year in their name; {n_unknown} do not and are excluded from every cohort below. "
+           "Vintage is inferred from names, so small cohorts—especially recent years—deserve extra caution.")
+st.caption("Latest filing per fund · price is par-weighted and excludes near-zero marks below 1¢ · bar labels show deal counts.")
 
 # --- Avg price by vintage ---
 st.subheader("Average Implied Price by Vintage")
@@ -61,23 +62,21 @@ if not priced.empty:
         priced, x="vintage", y="avg_price",
         color="avg_price", color_continuous_scale=["#D6705F", "#CBA255", "#6FA368"],
         labels={"vintage": "Vintage Year", "avg_price": "Avg Implied Price (¢)"},
-        range_color=[0, 100],
+        range_color=[0, 100], text="n_deals",
     )
     fig.update_layout(height=420, margin=dict(l=20, r=20, t=20, b=20), coloraxis_showscale=False)
     fig.update_xaxes(dtick=1)
     st.plotly_chart(fig, use_container_width=True)
 
 # --- Par by vintage ---
-st.subheader("Total Par by Vintage")
-fig = px.bar(
-    vs, x="vintage", y=vs["total_par"] / 1e6,
-    color_discrete_sequence=["#CBA255"],
-    labels={"vintage": "Vintage Year", "y": "Total Par ($M)"},
-)
-fig.update_layout(height=380, margin=dict(l=20, r=20, t=20, b=20))
-fig.update_xaxes(dtick=1)
-fig.update_yaxes(title="Total Par ($M)")
-st.plotly_chart(fig, use_container_width=True)
+with st.expander("Par outstanding by vintage"):
+    fig = px.bar(vs, x="vintage", y=vs["total_par"] / 1e6,
+                 color_discrete_sequence=["#CBA255"],
+                 labels={"vintage": "Vintage Year", "y": "Total Par ($M)"})
+    fig.update_layout(height=380, margin=dict(l=20, r=20, t=20, b=20))
+    fig.update_xaxes(dtick=1)
+    fig.update_yaxes(title="Total Par ($M)")
+    st.plotly_chart(fig, width="stretch")
 
 st.divider()
 
@@ -93,9 +92,10 @@ display = display[["vintage", "n_deals", "total_par", "avg_price", "median_price
 }).sort_values("Vintage", ascending=False)
 st.dataframe(display, use_container_width=True, hide_index=True, height=400)
 
-st.caption(
-    f"Vintage is parsed from the deal name. {n_unknown} deals use Roman-numeral or running "
+with st.expander("Method and missing vintages"):
+    st.caption(
+        f"Vintage is parsed from the deal name. {n_unknown} deals use Roman-numeral or running "
     f"series naming (e.g. \"Madison Park Funding XXIV\", \"Venture XX CLO\") with no year, and "
     f"are excluded here rather than bucketed into a guessed vintage. All data from SEC EDGAR "
-    f"NPORT-P filings, latest filing per fund."
-)
+        f"NPORT-P filings, latest filing per fund."
+    )

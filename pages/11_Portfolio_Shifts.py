@@ -13,7 +13,8 @@ from sqlalchemy import create_engine
 from src.analytics import loan_signals as ls
 from src.scrapers.fred import FRED_SERIES
 from src.scrapers.loan_nport_scraper import LOAN_FUNDS
-from src.ui import apply_chrome, CHART_SEQ, GOLD, CLARET, GREEN, RED, INK_2
+from src.ui import (apply_chrome, page_intro, CHART_SEQ, GOLD, CLARET, GREEN, RED, INK_2,
+                    EXIT_TYPE_COLORS)
 
 st.set_page_config(page_title="Portfolio Shifts & Signals", page_icon="🧭", layout="wide")
 
@@ -46,15 +47,18 @@ def load():
 
 
 data = load()
-st.title("🧭 Portfolio Shifts & Signals")
-st.caption("Loan-level view of what CLO managers' loan desks are adding, selling and re-marking — "
-           "and the CLO mechanics that most likely forced the trade.")
+page_intro("Portfolio Shifts",
+           "Track what leveraged-loan desks bought, cut, and repriced—then separate likely repayments and refinancings from discretionary sales.",
+           "🧭")
 if data is None or data[0].empty:
     st.warning("No loan-level data yet. Run `python run_loan_pipeline.py`.")
     st.stop()
 df, pos, hist, latest = data
 
 FUND_LABEL = {f["ticker"]: f"{f['manager']} ({f['ticker']})" for f in LOAN_FUNDS}
+st.warning(f"**Loan-fund proxy, not CLO holdings.** Seven registered loan funds run by related desks; "
+           f"latest filings {pos.groupby('fund').report_date.max().min():%b %Y}–{pos.report_date.max():%b %Y}. "
+           "Exit labels are inferred, not observed trades.")
 snap = pos.groupby("fund").report_date.agg(["min", "max", "nunique"])
 with st.expander("ℹ️ Where this data comes from (and what's missing)", expanded=False):
     st.markdown(f"""
@@ -91,24 +95,38 @@ def label(frame):
     return frame
 
 
-tabs = st.tabs(["Desk read", "Position changes", "Consensus & momentum", "Industry mix & macro",
-                "Opportunity screen", "How CLO traders think"])
+tabs = st.tabs(["Desk read", "Loan moves", "Crowd flow", "Sectors & macro",
+                "Opportunity screen", "CLO mechanics"])
 
 # ---------------------------------------------------------------- Desk read
 with tabs[0]:
     lab = label(latest)
     sells = lab[lab.action.isin(["Exit", "Trim"])]
     buys = lab[lab.action.isin(["Add", "Upsize"])]
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Sells (exits + trims)", f"{len(sells)}", f"${-sells.par_change.sum()/1e6:,.0f}mm par out")
-    c2.metric("Buys (adds + upsizes)", f"{len(buys)}", f"${buys.par_change.sum()/1e6:,.0f}mm par in")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Par reduced", f"-${-sells.par_change.sum()/1e6:,.0f}M")
+    c2.metric("Par added", f"+${buys.par_change.sum()/1e6:,.0f}M")
     held = latest[latest.action.isin(["Hold", "Upsize", "Trim"])]
-    c3.metric("Median mark change (held)", f"{held.price_change.median():+.2f} pts")
-    sub80 = pos[pos.report_date == pos.groupby("fund").report_date.transform("max")]
-    c4.metric("Positions marked < 80", f"{(sub80.price < 80).sum()}",
-              f"{sub80[sub80.price < 80].mv.sum()/sub80.mv.sum()*100:.1f}% of MV", delta_color="off")
+    c3.metric("Median mark change", f"{held.price_change.median():+.2f} pts")
+    st.caption("Each fund's latest filing versus its prior filing; par changes include exits and trims.")
 
-    st.subheader("Why they sold — latest quarter, by likely mechanical reason")
+    st.subheader("Exits and trims: repayment, refi, or sale?")
+    st.caption("Coarse labels inferred from price, maturity, and facility changes; the detailed reason remains below.")
+    exits = sells.groupby("exit_type").agg(Trades=("obligor", "count"),
+                                          **{"Par cut $M": ("par_change", lambda x: -x.sum() / 1e6)}).reset_index()
+    exits["Par cut $M"] = exits["Par cut $M"].round(1)
+    exits = exits.rename(columns={"exit_type": "Exit type"})
+    e1, e2 = st.columns([1, 1.5])
+    with e1:
+        st.dataframe(exits, hide_index=True, width="stretch")
+    with e2:
+        fig = px.bar(exits.sort_values("Par cut $M"), x="Par cut $M", y="Exit type", orientation="h",
+                     color="Exit type", color_discrete_map=EXIT_TYPE_COLORS, text="Trades")
+        fig.update_layout(height=210, xaxis_title="Par reduced ($M)", yaxis_title="",
+                          showlegend=False, margin=dict(l=0, r=0, t=10, b=0))
+        st.plotly_chart(fig, width="stretch")
+
+    st.subheader("Possible explanations for reductions (inferred)")
     r = sells.groupby("likely_reason").agg(trades=("obligor", "count"),
                                            par_sold_mm=("par_change", lambda s: -s.sum() / 1e6)).reset_index()
     fig = px.bar(r.sort_values("par_sold_mm"), x="par_sold_mm", y="likely_reason", orientation="h",
@@ -117,22 +135,27 @@ with tabs[0]:
                       margin=dict(l=0, r=0, t=10, b=0))
     st.plotly_chart(fig, width="stretch")
 
-    a, b = st.columns(2)
-    with a:
-        st.markdown("**Most broadly sold borrowers** (≥2 managers cutting)")
-        t = cons[cons.sellers >= 2].sort_values(["sellers", "net_par_change"], ascending=[False, True]).head(12)
-        st.dataframe(t[["obligor", "sector", "sellers", "buyers", "seller_list", "price_prev", "price_curr"]]
-                     .round(2), hide_index=True, width="stretch")
-    with b:
-        st.markdown("**Most broadly bought borrowers** (≥2 managers adding)")
-        t = cons[cons.buyers >= 2].sort_values(["buyers", "net_par_change"], ascending=False).head(12)
-        st.dataframe(t[["obligor", "sector", "buyers", "sellers", "buyer_list", "price_prev", "price_curr"]]
-                     .round(2), hide_index=True, width="stretch")
+    st.markdown("**Most broadly sold borrowers** · top 8 with ≥2 managers cutting")
+    t = cons[cons.sellers >= 2].sort_values(["sellers", "net_par_change"], ascending=[False, True]).head(8)
+    t = t[["obligor", "sellers", "buyers", "price_curr"]].copy()
+    t["price_curr"] = t["price_curr"].round(1)
+    st.dataframe(t.rename(columns={"obligor": "Borrower", "sellers": "Managers Selling",
+                                   "buyers": "Managers Buying", "price_curr": "Latest Price ¢"}),
+                 hide_index=True, width="stretch")
+    with st.expander("Most broadly bought borrowers"):
+        t = cons[cons.buyers >= 2].sort_values(["buyers", "net_par_change"], ascending=False).head(8)
+        t = t[["obligor", "buyers", "sellers", "price_curr"]].copy()
+        t["price_curr"] = t["price_curr"].round(1)
+        st.dataframe(t.rename(columns={"obligor": "Borrower", "buyers": "Managers Buying",
+                                       "sellers": "Managers Selling", "price_curr": "Latest Price ¢"}),
+                     hide_index=True, width="stretch")
 
-    st.markdown("**Biggest markdowns on continuing positions**")
-    md = lab[lab.action.isin(["Hold", "Trim", "Upsize"])].sort_values("price_change").head(12)
-    st.dataframe(md[["obligor", "manager", "sector", "price_prev", "price_curr", "price_change", "action",
-                     "likely_reason"]].round(2), hide_index=True, width="stretch")
+    with st.expander("Biggest markdowns on continuing positions"):
+        md = lab[lab.action.isin(["Hold", "Trim", "Upsize"])].sort_values("price_change").head(12)
+        md = md[["obligor", "manager", "price_prev", "price_curr", "price_change", "likely_reason"]].round(1)
+        st.dataframe(md.rename(columns={"obligor": "Borrower", "manager": "Manager", "price_prev": "Before ¢",
+                                       "price_curr": "Now ¢", "price_change": "Change ¢", "likely_reason": "Likely reason"}),
+                     hide_index=True, width="stretch")
 
 # ---------------------------------------------------------------- Position changes
 with tabs[1]:
@@ -147,15 +170,32 @@ with tabs[1]:
     k = st.columns(5)
     for i, a in enumerate(["Add", "Exit", "Upsize", "Trim", "Hold"]):
         k[i].metric(a, int((ch.action == a).sum()))
-    st.dataframe(v[["obligor", "sector", "industry", "action", "par_prev", "par_curr", "price_prev", "price_curr",
-                    "price_change", "likely_reason", "why"]].round(2), hide_index=True, width="stretch",
-                 height=520)
+    coarse = v[v.exit_type != ""]
+    if not coarse.empty:
+        br = coarse.groupby("exit_type").agg(Trades=("obligor", "count"),
+                                            **{"Par cut $M": ("par_change", lambda x: -x.sum() / 1e6)}).reset_index()
+        br["Par cut $M"] = br["Par cut $M"].round(1)
+        br = br.rename(columns={"exit_type": "Exit type"})
+        fig = px.bar(br, x="Exit type", y="Par cut $M", color="Exit type",
+                     color_discrete_map=EXIT_TYPE_COLORS, text="Trades")
+        fig.update_layout(height=240, showlegend=False, margin=dict(l=0, r=0, t=10, b=0))
+        st.plotly_chart(fig, width="stretch")
+    show = v[["obligor", "action", "exit_type", "par_prev", "par_curr", "price_curr", "likely_reason", "why"]].copy()
+    show["par_prev"] = (show.par_prev / 1e6).round(2)
+    show["par_curr"] = (show.par_curr / 1e6).round(2)
+    show["price_curr"] = show.price_curr.fillna(v.price_prev).round(1)
+    show = show.rename(columns={"obligor": "Borrower", "action": "Action", "exit_type": "Exit type",
+                                "par_prev": "Par Before $M", "par_curr": "Par After $M", "price_curr": "Price ¢",
+                                "likely_reason": "Likely reason", "why": "Why"})
+    st.dataframe(show, hide_index=True, width="stretch", height=460,
+                 column_config={"Why": st.column_config.TextColumn(width="large")})
     st.download_button("Download CSV", v.to_csv(index=False), f"{fund}_changes.csv")
 
 # ---------------------------------------------------------------- Consensus & momentum
 with tabs[2]:
-    st.markdown("Each manager's **latest quarter vs its prior quarter** (funds report on different month-ends, "
-                "so 'same quarter' means each fund's most recent filing).")
+    st.caption("Compare borrowers across managers. Each fund uses its latest filing versus its prior one.")
+    with st.expander("How to read this tab"):
+        st.markdown("Positive net flow means more managers are adding than cutting. Price momentum is the average change in fund-reported marks, not a traded return.")
     mom = ls.price_momentum(pos)
     cm = cons.merge(mom, on="obligor_key", how="left")
     c1, c2 = st.columns(2)
@@ -166,9 +206,14 @@ with tabs[2]:
         t = t[t.net < 0].sort_values("net")
     elif view == "Net buyers":
         t = t[t.net > 0].sort_values("net", ascending=False)
-    st.dataframe(t[["obligor", "sector", "holders_prev", "holders_curr", "buyers", "sellers", "buyer_list",
-                    "seller_list", "price_curr", "mom_1q", "mom_2q", "net_par_change"]].round(2),
-                 hide_index=True, width="stretch", height=420)
+    with st.expander("Borrower flow table", expanded=True):
+        view = t[["obligor", "buyers", "sellers", "price_curr", "mom_1q", "net_par_change"]].copy()
+        view["price_curr"] = view.price_curr.round(1)
+        view["mom_1q"] = view.mom_1q.round(1)
+        view["net_par_change"] = (view.net_par_change / 1e6).round(1)
+        st.dataframe(view.rename(columns={"obligor": "Borrower", "buyers": "Managers Buying", "sellers": "Managers Selling",
+                                          "price_curr": "Price ¢", "mom_1q": "1Q Mark Change ¢", "net_par_change": "Net Par Change $M"}),
+                     hide_index=True, width="stretch", height=420)
     st.markdown("**Price momentum vs crowd flow** — bottom-left = falling and being sold (forced-seller zone)")
     t2 = cm.dropna(subset=["mom_1q", "price_curr"])
     t2 = t2[(t2.buyers + t2.sellers) > 0]
@@ -183,12 +228,18 @@ with tabs[2]:
 with tabs[3]:
     fund2 = st.selectbox("Manager", list(FUND_LABEL), format_func=FUND_LABEL.get, key="mix_fund")
     mix = ls.industry_mix(pos, fund2)
-    fig = px.area(mix, x="report_date", y="weight", color="sector", color_discrete_sequence=px.colors.qualitative.Set3)
+    sector_detail = mix.copy()
+    latest_mix = mix[mix.report_date == mix.report_date.max()].nlargest(6, "weight")
+    keep = set(latest_mix.sector)
+    mix["Sector"] = mix.sector.where(mix.sector.isin(keep), "Other sectors")
+    mix = mix.groupby(["report_date", "Sector"], as_index=False).weight.sum()
+    st.caption("Latest six sectors shown separately; remaining sectors grouped as Other.")
+    fig = px.area(mix, x="report_date", y="weight", color="Sector", color_discrete_sequence=CHART_SEQ)
     fig.update_layout(height=420, yaxis_title="% of loan MV", xaxis_title="", margin=dict(l=0, r=0, t=10, b=0))
     st.plotly_chart(fig, width="stretch")
     d = sorted(mix.report_date.unique())
     if len(d) >= 2:
-        w = mix.pivot_table(index="sector", columns="report_date", values="weight", fill_value=0)
+        w = sector_detail.pivot_table(index="sector", columns="report_date", values="weight", fill_value=0)
         chg = pd.DataFrame({"weight_first": w[d[0]], "weight_latest": w[d[-1]]})
         chg["change_pts"] = chg.weight_latest - chg.weight_first
         chg["sector_mark_change_latest_qtr"] = chg.index.map(sector_moves)
@@ -196,7 +247,9 @@ with tabs[3]:
         chg["how macro transmits"] = chg.index.map(lambda s: ls.SECTOR_DRIVERS.get(s, ([], ""))[1])
         st.markdown(f"**Sector weight shift {pd.Timestamp(d[0]):%b %Y} → {pd.Timestamp(d[-1]):%b %Y}** "
                     "(positive = manager leaning in)")
-        st.dataframe(chg.sort_values("change_pts").round(2), width="stretch")
+        view = chg[["weight_first", "weight_latest", "change_pts"]].sort_values("change_pts").round(1)
+        view.columns = [f"Weight {pd.Timestamp(d[0]):%b %Y} %", f"Weight {pd.Timestamp(d[-1]):%b %Y} %", "Change (pts)"]
+        st.dataframe(view, width="stretch")
 
     st.markdown("**All managers — latest sector weights** (where the CLO-manager crowd is concentrated)")
     allmix = ls.industry_mix(pos)
@@ -215,8 +268,9 @@ with tabs[3]:
         ms = pd.read_sql("select series_id, obs_date, value from macro_series", c, parse_dates=["obs_date"])
     if not mc.empty:
         mc["series"] = mc.series_id.map(FRED_SERIES)
-        st.dataframe(mc[["series", "start", "end", "change", "pct_change"]].round(2), hide_index=True,
-                     width="stretch")
+        view = mc[["series", "start", "end", "change", "pct_change"]].round(2).rename(columns={
+            "series": "Macro Series", "start": "Start", "end": "End", "change": "Change", "pct_change": "Change %"})
+        st.dataframe(view, hide_index=True, width="stretch")
         pick = st.multiselect("Plot series", list(FRED_SERIES), ["BAMLH0A3HYC", "BAMLH0A0HYM2"],
                               format_func=FRED_SERIES.get)
         if pick:
@@ -231,10 +285,9 @@ with tabs[3]:
 
 # ---------------------------------------------------------------- Opportunity screen
 with tabs[4]:
-    st.markdown("""Loans whose discount looks **technical** (forced/constraint selling) rather than fundamental.
-Score = +2 price in the 70–85 CLO-constraint band · +1 per manager selling (max 3) · +1 sector peers not falling ·
-+1 no default/PIK flag · +1 someone is buying · −2 if it gapped down >10 pts last quarter. **This is a starting
-list for diligence, not a recommendation** — ratings and borrower financials aren't in these filings.""")
+    st.caption("A diligence shortlist of discounted loans with signs of technical—not necessarily fundamental—selling. Not investment advice.")
+    with st.expander("How the technical score works"):
+        st.markdown("+2 price in the 70–85 constraint band · +1 per manager selling (max 3) · +1 sector peers not falling · +1 no default/PIK flag · +1 someone is buying · −2 for a >10-point quarterly drop. Ratings and borrower financials are not in these filings.")
     c1, c2, c3 = st.columns(3)
     lo, hi = c1.slider("Price band", 40, 100, (60, 92))
     min_score = c2.slider("Min technical score", 0, 8, 4)
@@ -243,10 +296,11 @@ list for diligence, not a recommendation** — ratings and borrower financials a
     op = op[op.technical_score >= min_score]
     if sectors:
         op = op[op.sector.isin(sectors)]
-    st.dataframe(op[["obligor", "sector", "industry", "price", "discount_to_par", "mom_1q", "mom_2q", "holders",
-                     "sellers", "buyers", "coupon", "maturity", "technical_score", "signal_read"]].round(2),
-                 hide_index=True, width="stretch", height=460,
-                 column_config={"maturity": st.column_config.DateColumn(format="MMM YYYY")})
+    view = op[["obligor", "technical_score", "signal_read", "price", "sellers", "buyers"]].copy()
+    view["price"] = view.price.round(1)
+    st.dataframe(view.rename(columns={"obligor": "Borrower", "technical_score": "Technical Score",
+                                      "signal_read": "Why It Screens", "price": "Price ¢", "sellers": "Sellers", "buyers": "Buyers"}),
+                 hide_index=True, width="stretch", height=460)
     from src.summarizer import ai_summaries_enabled, generate_trade_rationale
     if ai_summaries_enabled() and not op.empty:
         who = st.selectbox("AI trader's read on…", op.obligor.head(30).tolist())
@@ -259,8 +313,7 @@ list for diligence, not a recommendation** — ratings and borrower financials a
             with st.spinner("Thinking like a CLO trader…"):
                 txt = generate_trade_rationale(ctx)
             st.info(txt or "AI unavailable — use the rule-based read above.")
-    else:
-        st.caption("Set ANTHROPIC_API_KEY to enable a short AI trader's rationale per loan.")
+
 
 # ---------------------------------------------------------------- Explainer
 with tabs[5]:

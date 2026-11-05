@@ -7,7 +7,7 @@ from datetime import datetime
 
 from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
-from src.ui import apply_chrome
+from src.ui import apply_chrome, page_intro
 from src.analytics.pricing import split_par_priced
 
 st.set_page_config(page_title="CLO Dashboard", page_icon="📊", layout="wide",
@@ -69,11 +69,11 @@ if not holdings_df.empty:
     merged = holdings_df.merge(deals_df, left_on="deal_id", right_on="id", how="left")
 
 # Header
-st.title("CLO Deal Intelligence")
-st.caption(f"Data scraped from SEC EDGAR NPORT-P filings · {datetime.now().strftime('%B %d, %Y')}")
+page_intro("CLO Overview", "Start here for a plain-English view of what public CLO equity funds own, how those positions are marked, and which managers dominate the book.", "📊")
+st.caption(f"SEC EDGAR NPORT-P holdings · page loaded {datetime.now().strftime('%b %d, %Y')}")
 
 # Top metrics
-col1, col2, col3, col4, col5 = st.columns(5)
+col1, col2, col3 = st.columns(3)
 col1.metric("Deals Tracked", len(deals))
 col2.metric("Unique Managers", deals_df["manager"].nunique())
 
@@ -86,9 +86,10 @@ if not holdings_df.empty:
     avg_price = (total_mv / total_par * 100) if total_par > 0 else 0
     n_funds = holdings_df["source_fund"].nunique()
 
-    col3.metric("Total Par Held", f"${total_par / 1e9:.1f}B")
-    col4.metric("Avg Implied Price", f"{avg_price:.1f}¢")
-    col5.metric("Source Funds", n_funds)
+    col3.metric("Reported Par", f"${total_par / 1e9:.1f}B")
+    st.markdown(f"Across **{len(deals)} deals from {deals_df.manager.nunique()} managers**, the accumulated filings report **${total_par / 1e9:.1f}B of par** at an aggregate **{avg_price:.1f}¢** implied price.")
+    st.caption(f"All {n_funds} funds, all {holdings_df.filing_date.nunique()} filing snapshots from {holdings_df.filing_date.min():%b %d, %Y} to {holdings_df.filing_date.max():%b %d, %Y}; "
+               "par and deals include historical holdings. Average price is aggregate MV ÷ aggregate par; marks above 150¢ and non-par lines excluded. This is not a current-only portfolio.")
 
 st.divider()
 
@@ -107,6 +108,7 @@ if not holdings_df.empty:
 
     with chart2:
         st.subheader("Implied Price Distribution")
+        st.caption("The spike near zero includes residual or written-off equity marks; the 0–150¢ view excludes non-comparable instruments.")
         price_data = merged.dropna(subset=["implied_price"])
         price_data = price_data[price_data["implied_price"].between(0, 150)]
         if not price_data.empty:
@@ -145,19 +147,19 @@ if not holdings_df.empty:
     st.divider()
 
     # Deals table
-    st.subheader("All Deals")
-    deal_summary = merged.groupby(["deal_name", "manager"]).agg(
-        par=("par_amount", "sum"),
-        mv=("market_value", "sum"),
-        funds=("source_fund", lambda x: ", ".join(sorted(x.unique()))),
-    ).reset_index()
-    deal_summary["price"] = (deal_summary["mv"] / deal_summary["par"] * 100).where(deal_summary["par"] > 0).round(1)
-    deal_summary["par_mm"] = (deal_summary["par"] / 1e6).round(2)
-    deal_summary["mv_mm"] = (deal_summary["mv"] / 1e6).round(2)
+    with st.expander("Browse all deals", expanded=False):
+        deal_summary = merged.groupby(["deal_name", "manager"]).agg(
+            par=("par_amount", "sum"),
+            mv=("market_value", "sum"),
+            funds=("source_fund", lambda x: ", ".join(sorted(x.unique()))),
+        ).reset_index()
+        deal_summary["price"] = (deal_summary["mv"] / deal_summary["par"] * 100).where(deal_summary["par"] > 0).round(1)
+        deal_summary["par_mm"] = (deal_summary["par"] / 1e6).round(2)
+        deal_summary["mv_mm"] = (deal_summary["mv"] / 1e6).round(2)
 
-    display2 = deal_summary[["deal_name", "manager", "par_mm", "mv_mm", "price", "funds"]].rename(columns={
-        "deal_name": "Deal", "manager": "Manager", "par_mm": "Par ($M)",
-        "mv_mm": "MV ($M)", "price": "Price (¢)", "funds": "Held By",
-    }).sort_values("Par ($M)", ascending=False)
+        display2 = deal_summary[["deal_name", "manager", "par_mm", "mv_mm", "price", "funds"]].rename(columns={
+            "deal_name": "Deal", "manager": "Manager", "par_mm": "Par ($M)",
+            "mv_mm": "MV ($M)", "price": "Price (¢)", "funds": "Held By",
+        }).sort_values("Par ($M)", ascending=False)
 
-    st.dataframe(display2, use_container_width=True, hide_index=True, height=500)
+        st.dataframe(display2, use_container_width=True, hide_index=True, height=500)

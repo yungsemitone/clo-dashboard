@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
 from src.summarizer import generate_fund_summary, ai_summaries_enabled, DEFAULT_SUMMARY_MODEL
-from src.ui import apply_chrome
+from src.ui import apply_chrome, page_intro
 from src.analytics.pricing import split_par_priced
 
 import yaml
@@ -77,8 +77,7 @@ FUND_INFO = {
 
 session = get_db()
 
-st.title("🏛️ Fund Profiles")
-st.caption("Deep dive into each CLO equity fund's portfolio")
+page_intro("Fund Profiles", "Choose a fund to see its portfolio at a glance, its largest manager exposures, and the underlying holdings behind the headline marks.", "🏛️")
 
 # Fund selector
 fund_options = dict(sorted({f"{info['name']} ({info['ticker']})" : ticker for ticker, info in FUND_INFO.items()}.items()))
@@ -93,7 +92,8 @@ st.divider()
 # --- Fund header ---
 st.subheader(fund["name"])
 st.caption(f"{fund['exchange']}: {fund['ticker']}  ·  {fund['focus']}")
-st.markdown(fund["description"])
+with st.expander("About this fund"):
+    st.markdown(fund["description"])
 
 st.divider()
 
@@ -139,12 +139,12 @@ avg_price = (total_mv / total_par * 100) if total_par > 0 else 0
 n_positions = len(latest_df)
 n_managers = latest_df["manager"].nunique()
 
-col1, col2, col3, col4, col5 = st.columns(5)
+col1, col2, col3 = st.columns(3)
 col1.metric("Positions", n_positions)
 col2.metric("Managers", n_managers)
 col3.metric("Total Par", f"${total_par / 1e6:,.1f}M")
-col4.metric("Total Market Value", f"${total_mv / 1e6:,.1f}M")
-col5.metric("Avg Implied Price", f"{avg_price:.1f}¢")
+st.caption(f"NPORT-P filing {filing_date:%b %d, %Y} · aggregate market value ${total_mv / 1e6:,.1f}M · "
+           f"weighted average price {avg_price:.1f}¢. Price average excludes non-par lines and marks above 150¢; this differs from all-history averages on other pages.")
 
 st.divider()
 
@@ -195,17 +195,18 @@ display_mgr = mgr_stats[["manager", "positions", "par_mm", "mv_mm", "avg_price",
 
 st.dataframe(display_mgr, use_container_width=True, hide_index=True, height=350)
 
-# Treemap of manager concentration
-fig = px.treemap(
-    mgr_stats.nlargest(20, "total_par"),
-    path=["manager"], values="total_par",
-    color="avg_price",
-    color_continuous_scale=["#D6705F", "#CBA255", "#6FA368"],
-    labels={"total_par": "Par Amount", "avg_price": "Avg Price (¢)", "manager": "Manager"},
-)
-fig.update_layout(height=400, margin=dict(l=10, r=10, t=10, b=10))
-st.plotly_chart(fig, use_container_width=True)
-st.caption("Size = par amount, color = avg implied price (green = higher)")
+# Treemap of manager concentration; cap color at 150 so non-par outliers do not flatten the scale.
+with st.expander("Manager concentration map"):
+    fig = px.treemap(
+        mgr_stats.assign(treemap_price=mgr_stats.avg_price.clip(0, 100)).nlargest(20, "total_par"),
+        path=["manager"], values="total_par",
+        color="treemap_price",
+        color_continuous_scale=["#D6705F", "#CBA255", "#6FA368"],
+        labels={"total_par": "Par Amount", "treemap_price": "Avg Price ¢", "manager": "Manager"},
+    )
+    fig.update_layout(height=400, margin=dict(l=10, r=10, t=10, b=10))
+    st.plotly_chart(fig, width="stretch")
+    st.caption("Size = par; color = average price, capped at 100¢ for comparability.")
 
 # --- Top and bottom positions ---
 st.divider()
@@ -242,19 +243,18 @@ with bot_col:
         st.caption(f"{len(written_off)} positions (${wo_par:,.1f}M par) marked at near-zero value")
 
 # --- Full holdings table ---
-st.divider()
-st.subheader("All Holdings")
+with st.expander("All holdings — latest filing"):
+    st.caption("Use table search and sorting to explore.")
 
-full_display = latest_df[["deal_name", "manager", "par_amount", "market_value", "implied_price", "cusip"]].copy()
-full_display["par_amount"] = (full_display["par_amount"] / 1e6).round(2)
-full_display["market_value"] = (full_display["market_value"] / 1e6).round(2)
-full_display["implied_price"] = full_display["implied_price"].round(1)
-full_display = full_display.rename(columns={
-    "deal_name": "Deal", "manager": "Manager", "par_amount": "Par ($M)",
-    "market_value": "MV ($M)", "implied_price": "Price (¢)", "cusip": "CUSIP",
-})
-
-st.dataframe(full_display, use_container_width=True, hide_index=True, height=500)
+    full_display = latest_df[["deal_name", "manager", "par_amount", "market_value", "implied_price", "cusip"]].copy()
+    full_display["par_amount"] = (full_display["par_amount"] / 1e6).round(2)
+    full_display["market_value"] = (full_display["market_value"] / 1e6).round(2)
+    full_display["implied_price"] = full_display["implied_price"].round(1)
+    full_display = full_display.rename(columns={
+        "deal_name": "Deal", "manager": "Manager", "par_amount": "Par $M",
+        "market_value": "MV $M", "implied_price": "Price ¢", "cusip": "CUSIP",
+    })
+    st.dataframe(full_display, width="stretch", hide_index=True, height=500)
 
 # --- Source Filings ---
 st.divider()
@@ -351,7 +351,7 @@ if st.session_state[summary_key]:
     if ai_summaries_enabled():
         st.caption(f"✨ Generated by Claude ({DEFAULT_SUMMARY_MODEL}) from the NPORT-P portfolio data.")
     else:
-        st.caption("Rule-based summary. Set ANTHROPIC_API_KEY to enable AI-generated summaries.")
+        st.caption("Rule-based summary from the reported portfolio data.")
 
     st.markdown("")
 

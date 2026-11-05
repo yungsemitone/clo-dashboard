@@ -18,7 +18,7 @@ CARD = "#251D19"
 LINE = "#3A2F28"
 INK = "#F3ECE3"
 INK_2 = "#C9BCAF"
-INK_3 = "#93857A"
+INK_3 = "#B7A99C"
 CLARET = "#C25361"
 GOLD = "#CBA255"
 GREEN = "#6FA368"   # "up"
@@ -67,6 +67,36 @@ h1, h2, h3, h4,
 
 /* Captions in the muted ink */
 [data-testid="stCaptionContainer"], .stCaption {{ color: {INK_3} !important; }}
+
+/* Readable evidence: larger labels and comfortable table rows. */
+html, body, [class*="css"] {{ font-size: 16px; }}
+[data-testid="stDataFrame"] [role="columnheader"] {{
+    color: {INK} !important; font-size: 0.92rem !important; font-weight: 600 !important;
+}}
+[data-testid="stDataFrame"] [role="gridcell"] {{
+    color: {INK} !important; font-size: 0.92rem !important;
+    padding-top: 0.45rem !important; padding-bottom: 0.45rem !important;
+}}
+[data-testid="stWidgetLabel"] p, [data-testid="stRadio"] p {{ color: {INK_2} !important; }}
+.js-plotly-plot .plotly text {{ font-size: 14px !important; }}
+[data-testid="stSidebarNav"] a {{ padding-top: 0.35rem; padding-bottom: 0.35rem; }}
+[data-testid="stSidebarNav"] a span {{ font-size: 0.96rem; }}
+
+/* A clear page thesis and calmer spacing, without changing the brand. */
+.clo-page-lead {{
+    color: {INK_2};
+    font-size: 1.02rem;
+    line-height: 1.65;
+    max-width: 1050px;
+    margin: -0.15rem 0 1.25rem;
+}}
+[data-testid="stDataFrame"] {{ border: 1px solid {LINE}; border-radius: 10px; }}
+[data-testid="stExpander"] {{ margin-bottom: 0.65rem; }}
+[data-testid="stExpander"] summary p {{ color: {INK_2}; }}
+.clo-exit-badge {{
+    display: inline-block; padding: 0.2rem 0.55rem; border-radius: 999px;
+    font-size: 0.78rem; font-weight: 600; margin: 0.12rem 0.25rem 0.12rem 0;
+}}
 </style>
 """
 
@@ -74,3 +104,24 @@ h1, h2, h3, h4,
 def apply_chrome():
     """Inject fonts + chrome CSS. Call once per page after the auth gate."""
     st.markdown(_CSS, unsafe_allow_html=True)
+
+
+EXIT_TYPE_COLORS = {
+    "Call / liquidation": GREEN,
+    "Call / repayment": GREEN,
+    "Reset / refi": GOLD,
+    "Sale": CLARET,
+}
+
+
+def page_intro(title: str, lead: str, icon: str = ""):
+    """Consistent title plus one plain-English reason to read the page."""
+    st.title(f"{icon} {title}".strip())
+    st.markdown(f'<p class="clo-page-lead">{lead}</p>', unsafe_allow_html=True)
+
+
+def exit_badge(label: str) -> str:
+    """Small inline badge for custom HTML summaries (tables use plain text)."""
+    color = EXIT_TYPE_COLORS.get(label, INK_2)
+    return (f'<span class="clo-exit-badge" style="color:{color};'
+            f'background:{color}20;border:1px solid {color}55">{label}</span>')

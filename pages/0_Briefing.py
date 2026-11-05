@@ -5,7 +5,7 @@ import streamlit as st
 import pandas as pd
 
 from src.db import init_db, get_session
-from src.ui import apply_chrome
+from src.ui import apply_chrome, page_intro
 from src.analytics.conviction import latest_holdings
 from src.analytics.pricing import valid_prices
 from src.analytics.manager_scorecard import (
@@ -38,8 +38,7 @@ FUND_NAMES = {"OXLC": "Oxford Lane", "ECC": "Eagle Point",
 
 session = get_db()
 
-st.title("📰 Briefing")
-st.caption("What the latest filings say — the read, before the charts")
+page_intro("Briefing", "Get the quarter's main story in a minute: valuation trends, the widest mark disagreements, and the latest buying and selling.", "📰")
 
 hold = latest_holdings(session)
 pos = tracked_positions(session)
@@ -85,13 +84,13 @@ worst = manager_trajectories(session, min_positions=3, positions=pos)
 lead_lines = []
 lead_lines.append(
     f"Across the five funds' latest filings, CLO positions are marked at an average "
-    f"<b>{avg_price:.0f}¢</b> on the dollar of par."
+    f"<b>{avg_price:.0f}¢</b> on the dollar of par. Latest filing per fund; valid par-priced marks only."
 )
 if not pos.empty:
     lead_lines.append(
         f"Over the trailing window ({period_label(pos)}), the funds marked these books "
-        f"<b>{overall_delta:+.1f}¢</b> on a par-weighted basis, with <b>{pct_down:.0f}%</b> of "
-        f"individual positions written lower — a move in the asset class, not a few names."
+        f"<b>{overall_delta:+.1f}¢</b> on a starting-par-weighted basis, with <b>{pct_down:.0f}%</b> of "
+        f"continuing positions written lower."
     )
 if not spreads.empty:
     top = spreads.iloc[0]
@@ -103,7 +102,7 @@ if not spreads.empty:
 st.markdown(
     '<div style="background:#251D19;border-left:4px solid #CBA255;padding:1.1rem 1.3rem;'
     'border-radius:0 6px 6px 0;line-height:1.75;color:#C9BCAF;font-size:1.02rem;">'
-    + " ".join(lead_lines) + "</div>", unsafe_allow_html=True)
+    + "".join(f"<div style='margin:0.25rem 0'>• {line}</div>" for line in lead_lines) + "</div>", unsafe_allow_html=True)
 
 st.divider()
 
@@ -124,14 +123,16 @@ else:
         columns={"deal_name": "Deal", "manager": "Manager", "spread": "Gap (¢)"})
     show["Gap (¢)"] = show["Gap (¢)"].round(0)
     st.dataframe(show, use_container_width=True, hide_index=True)
-    st.caption("Full reasoning for any deal is on the **Cross-Fund Comparison** page.")
+    st.link_button("Open Cross Fund for deal-level valuation detail", "/Cross_Fund")
 
 st.divider()
 
 # ---------------------------------------------------------------- movers
-left, right = st.columns(2)
-with left:
-    st.subheader("Marked down hardest")
+st.caption("Local filing windows vary by fund; first-to-latest comparisons use starting-par weighting. Was = first filing; Now = latest filing.")
+with st.expander("Managers marked down hardest and holding up best"):
+  left, right = st.columns(2)
+  with left:
+    st.markdown("**Marked down hardest**")
     if worst.empty:
         st.info("Not enough history.")
     else:
@@ -142,8 +143,8 @@ with left:
             "manager": "Manager", "n_positions": "Pos.", "price_then": "Was (¢)",
             "price_now": "Now (¢)", "delta": "Δ (¢)"}), use_container_width=True, hide_index=True)
 
-with right:
-    st.subheader("Held up best")
+  with right:
+    st.markdown("**Held up best**")
     if worst.empty:
         st.info("Not enough history.")
     else:
@@ -168,13 +169,13 @@ for fund in sorted(FUND_NAMES):
     r = compute_position_changes(session, fund, dates[1], dates[0])["summary"]
     rows.append({
         "Fund": FUND_NAMES[fund], "New": r["n_added"], "Exited": r["n_exited"],
-        "Resized": r["n_resized"],
-        "Net Par Δ ($M)": round(r["net_par_change"] / 1e6, 1),
+        "Resized": r["n_resized"], "Comparison": f"{dates[1]:%b %d, %Y} → {dates[0]:%b %d, %Y}",
+        "Net Par Change $M": round(r["net_par_change"] / 1e6, 1),
         "Positions": r["curr_positions"],
     })
 if rows:
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-    st.caption("Position-level detail is on the **Position Changes** page.")
+    st.link_button("Open Position Changes for exits and inferred exit types", "/Position_Changes")
 
 st.divider()
 st.caption(

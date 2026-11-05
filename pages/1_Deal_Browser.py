@@ -6,7 +6,7 @@ import pandas as pd
 
 from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
-from src.ui import apply_chrome
+from src.ui import apply_chrome, page_intro
 
 import yaml
 from pathlib import Path
@@ -51,7 +51,7 @@ def get_base_name(deal_name: str) -> str:
 
 
 session = get_db()
-st.title("🔍 Deal Browser")
+page_intro("Deal Browser", "Look up a manager's CLOs and open only the deals you need to inspect holdings, marks, and filing history.", "🔍")
 
 deals = session.query(Deal).order_by(Deal.manager, Deal.deal_name).all()
 if not deals:
@@ -60,6 +60,14 @@ if not deals:
 
 # Step 1: Select a manager
 managers = sorted(set(d.manager for d in deals))
+with st.expander("Search the full deal list"):
+    query = st.text_input("Deal or manager name", placeholder="e.g. Ares or Carlyle")
+    matches = [d for d in deals if query.lower() in d.deal_name.lower() or query.lower() in d.manager.lower()] if query else []
+    if query:
+        found = pd.DataFrame([{"Deal": d.deal_name, "Manager": d.manager} for d in matches[:100]])
+        st.caption(f"{len(matches)} matching deals" + ("; showing first 100." if len(matches) > 100 else "."))
+        if not found.empty:
+            st.dataframe(found, width="stretch", hide_index=True)
 mgr_col, _ = st.columns([2, 3])
 with mgr_col:
     selected_manager = st.selectbox("Select a manager", managers)
@@ -104,6 +112,7 @@ groups = OrderedDict(
     sorted(groups.items(), key=lambda x: sum(d["par"] for d in x[1]), reverse=True)
 )
 
+st.caption(f"{selected_manager}: {len(manager_deals)} deal records across all tracked filings. Open a series to see each position's latest fund, par, price, and filing date. N/A means no usable par-based price.")
 st.markdown(f"**{selected_manager}** — {len(manager_deals)} deals in {len(groups)} series")
 
 

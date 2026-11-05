@@ -23,6 +23,7 @@ def _fund_metrics(frame: pd.DataFrame) -> dict:
         "total_par": par,
         "total_mv": mv,
         "avg_price": (mv / par * 100) if par > 0 else 0.0,
+        "filing_date": frame["filing_date"].max() if "filing_date" in frame else None,
     }
 
 

@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 
 from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
-from src.ui import apply_chrome
+from src.ui import apply_chrome, page_intro, FUND_COLORS
 from src.analytics.valuation_notes import explain_cross_held, PRIMER, fund_book_posture, pairwise_bias
 from src.analytics.vintage import parse_vintage
 from src.summarizer import generate_valuation_explainer, ai_summaries_enabled
@@ -36,10 +36,10 @@ FUND_NAMES = {"OXLC": "Oxford Lane", "ECC": "Eagle Point",
 
 session = get_db()
 
-st.title("🔀 Cross-Fund Comparison")
-st.caption("Deals held by multiple funds — where do their valuations disagree?")
+page_intro("Cross-Fund", "See where funds mark the same CLO differently, then check whether they own the identical security or different tranches.", "🔀")
 
-with st.expander("📖 How to read these valuations — a 30-second CLO primer"):
+st.caption("Five public CLO-equity funds · latest NPORT-P filing per fund · prices are cents per $1 of par; near-zero and missing marks are excluded from comparisons.")
+with st.expander("How to read prices, tranches, and CUSIPs"):
     st.markdown(PRIMER)
 
 # Find deals held by 2+ funds (latest filing per fund only)
@@ -91,11 +91,13 @@ deal_spreads = priced_multi.groupby(["deal_id", "deal_name", "manager"]).agg(
     max_price=("price", "max"),
     avg_price=("price", "mean"),
     total_par=("par", "sum"),
+    cusips=("cusip", lambda x: len({c for c in x if c})),
 ).reset_index()
 
 # Only keep deals where 2+ funds have a real price
 deal_spreads = deal_spreads[deal_spreads["funds"] >= 2]
 deal_spreads["spread"] = deal_spreads["max_price"] - deal_spreads["min_price"]
+deal_spreads["Comparison"] = deal_spreads["cusips"].map(lambda n: "Same security" if n <= 1 else "Different tranches")
 deal_spreads = deal_spreads.sort_values("spread", ascending=False)
 
 # Top metrics
@@ -104,10 +106,11 @@ avg_spread = deal_spreads["spread"].mean()
 max_spread_row = deal_spreads.iloc[0] if not deal_spreads.empty else None
 
 col1, col2, col3 = st.columns(3)
-col1.metric("Deals Held by 2+ Funds", n_shared)
-col2.metric("Avg Price Spread", f"{avg_spread:.1f}¢")
-if max_spread_row is not None:
-    col3.metric("Widest Spread", f"{max_spread_row['spread']:.1f}¢")
+col1.metric("Comparable Shared Deals", n_shared)
+col2.metric("Same CUSIP", int((deal_spreads["Comparison"] == "Same security").sum()))
+col3.metric("Different Tranches", int((deal_spreads["Comparison"] == "Different tranches").sum()))
+st.caption(f"{len(multi_fund_deals)} deals are held by 2+ funds; {n_shared} have usable marks of at least 1¢ at two or more funds and appear below. "
+           f"Average gap: {avg_spread:.1f}¢. Matching CUSIPs indicate the identical security; different CUSIPs usually mean different tranches.")
 
 st.divider()
 
@@ -128,10 +131,7 @@ if not top_spread.empty:
                 x=[h["price"]],
                 y=[row["deal_name"][:40]],
                 mode="markers",
-                marker=dict(size=12, color={
-                    "OXLC": "#CBA255", "ECC": "#2E7D5B", "OCCI": "#D4A843",
-                    "PDCC": "#4A90D9", "PRIF": "#DC3545",
-                }.get(h["fund"], "#888")),
+                marker=dict(size=12, color=FUND_COLORS.get(h["fund"], "#888")),
                 name=FUND_NAMES.get(h["fund"], h["fund"]),
                 showlegend=False,
                 hovertemplate=f"{FUND_NAMES.get(h['fund'], h['fund'])}: {h['price']:.1f}¢<br>Par: ${h['par']/1e6:.1f}M<extra></extra>",
@@ -148,8 +148,7 @@ if not top_spread.empty:
             ))
 
     # Add legend manually
-    for fund, color in [("OXLC", "#CBA255"), ("ECC", "#2E7D5B"), ("OCCI", "#D4A843"),
-                         ("PDCC", "#4A90D9"), ("PRIF", "#DC3545")]:
+    for fund, color in FUND_COLORS.items():
         if fund in multi_df["fund"].values:
             fig.add_trace(go.Scatter(
                 x=[None], y=[None], mode="markers",
@@ -174,17 +173,14 @@ st.divider()
 # Full table
 st.subheader("All Cross-Held Deals")
 
-display = deal_spreads[["deal_name", "manager", "funds", "min_price", "max_price", "spread", "avg_price", "total_par"]].copy()
+display = deal_spreads[["deal_name", "Comparison", "min_price", "max_price", "spread", "total_par"]].copy()
 display["total_par"] = (display["total_par"] / 1e6).round(1)
 display["min_price"] = display["min_price"].round(1)
 display["max_price"] = display["max_price"].round(1)
 display["spread"] = display["spread"].round(1)
-display["avg_price"] = display["avg_price"].round(1)
-
 display = display.rename(columns={
-    "deal_name": "Deal", "manager": "Manager", "funds": "Funds",
-    "min_price": "Low (¢)", "max_price": "High (¢)", "spread": "Spread (¢)",
-    "avg_price": "Avg (¢)", "total_par": "Total Par ($M)",
+    "deal_name": "Deal", "min_price": "Low ¢", "max_price": "High ¢",
+    "spread": "Gap ¢", "total_par": "Combined Par $M",
 })
 
 st.dataframe(display, use_container_width=True, hide_index=True, height=400)
@@ -193,10 +189,10 @@ st.dataframe(display, use_container_width=True, hide_index=True, height=400)
 st.divider()
 st.subheader("Deal Detail")
 
-deal_options = dict(sorted({row["deal_name"]: row["deal_id"] for _, row in deal_spreads.iterrows()}.items()))
+deal_options = {row["deal_name"]: row["deal_id"] for _, row in deal_spreads.iterrows()}
 deal_col, _ = st.columns([2, 3])
 with deal_col:
-    selected_deal = st.selectbox("Select a cross-held deal", list(deal_options.keys()))
+    selected_deal = st.selectbox("Deal (ranked by largest valuation gap)", list(deal_options.keys()))
 selected_id = deal_options[selected_deal]
 
 deal_holdings = multi_df[multi_df["deal_id"] == selected_id].sort_values("fund")
@@ -208,8 +204,9 @@ if not deal_holdings.empty:
             "Fund": FUND_NAMES.get(h["fund"], h["fund"]),
             "Par": f"${h['par']:,.0f}",
             "Market Value": f"${h['mv']:,.0f}",
-            "Implied Price": f"{h['price']:.1f}¢" if h["price"] else "N/A",
-            "CUSIP (tranche)": h["cusip"] or "—",
+            "Price ¢": f"{h['price']:.1f}" if pd.notna(h["price"]) else "—",
+            "CUSIP": h["cusip"] or "—",
+            "Filing Date": fund_latest.get(h["fund"]),
         })
 
     st.dataframe(pd.DataFrame(detail_rows), use_container_width=True, hide_index=True)
@@ -221,7 +218,7 @@ if not deal_holdings.empty:
         fig.add_trace(go.Bar(
             x=[FUND_NAMES.get(f, f) for f in priced["fund"]],
             y=priced["price"],
-            marker_color=["#CBA255", "#2E7D5B", "#D4A843", "#4A90D9", "#DC3545"][:len(priced)],
+            marker_color=[FUND_COLORS.get(f, "#888") for f in priced["fund"]],
             text=priced["price"].round(1),
             textposition="auto",
         ))
@@ -241,10 +238,19 @@ if not deal_holdings.empty:
                               fund_postures=fund_postures, pair_bias=pair_bias,
                               fund_names=FUND_NAMES)
 
-    st.markdown("#### Why these marks differ")
-    st.markdown(f"*{note['summary']}*")
-    for reason in note["reasons"]:
-        st.markdown("- " + reason)
+    st.markdown("#### Three things to know")
+    same_security = note["cusip_case"] == "same"
+    comparison_text = ("Identical CUSIP—the price gap is a valuation difference." if same_security
+                       else "Different CUSIPs—the funds likely own different tranches." if note["cusip_case"] == "different"
+                       else "CUSIP detail is incomplete—tranche comparability is uncertain.")
+    dates_used = ", ".join(f"{FUND_NAMES.get(r['fund'], r['fund'])} {fund_latest.get(r['fund']):%b %d, %Y}" for r in records)
+    st.markdown(f"- **Security:** {comparison_text}\n"
+                f"- **Price gap:** {note['summary']}\n"
+                f"- **Timing:** {dates_used}. Marks are not necessarily struck on the same day.")
+    with st.expander("Full valuation rationale and portfolio context"):
+        for reason in note["reasons"]:
+            st.markdown("- " + reason)
+        st.caption("Portfolio-average marks in this rationale include priced (≥1¢) latest holdings; other pages may use all filings or exclude non-par instruments, so averages can differ by design.")
 
     if ai_summaries_enabled():
         if st.button("✨ Analyst note (AI)", key=f"vexp_{selected_id}"):

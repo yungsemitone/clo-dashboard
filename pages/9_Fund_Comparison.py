@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 
 from src.db import init_db, get_session
 from src.analytics.fund_compare import compare_funds
-from src.ui import apply_chrome
+from src.ui import apply_chrome, page_intro
 
 import yaml
 from pathlib import Path
@@ -34,8 +34,7 @@ FUND_NAMES = {"OXLC": "Oxford Lane", "ECC": "Eagle Point",
 
 session = get_db()
 
-st.title("⚖️ Fund Comparison")
-st.caption("Two funds side by side — shared managers, where they overlap, and how their marks differ")
+page_intro("Fund Comparison", "Put two funds side by side to compare portfolio size, average marks, and the managers and deals they share.", "⚖️")
 
 tickers = list(FUND_NAMES.keys())
 labels = {f"{name} ({t})": t for t, name in FUND_NAMES.items()}
@@ -68,18 +67,19 @@ with col_a:
     s1.metric("Positions", ma["positions"])
     s2.metric("Total Par", f"${ma['total_par'] / 1e6:,.0f}M")
     s3.metric("Avg Price", f"{ma['avg_price']:.1f}¢")
-    st.caption(f"{ma['n_managers']} managers")
+    st.caption(f"{ma['n_managers']} managers · filing {ma['filing_date']:%b %d, %Y}")
 with col_b:
     st.markdown(f"### {name_b}")
     s1, s2, s3 = st.columns(3)
     s1.metric("Positions", mb["positions"])
     s2.metric("Total Par", f"${mb['total_par'] / 1e6:,.0f}M")
     s3.metric("Avg Price", f"{mb['avg_price']:.1f}¢")
-    st.caption(f"{mb['n_managers']} managers")
+    st.caption(f"{mb['n_managers']} managers · filing {mb['filing_date']:%b %d, %Y}")
 
 st.divider()
 
 # --- Overlap summary ---
+st.caption("Latest filing per fund. Average price is aggregate reported MV ÷ par across all latest holdings; no non-par exclusions here, so it can differ from Fund Profiles. Use Cross Fund for same-deal valuation analysis.")
 o1, o2, o3, o4 = st.columns(4)
 o1.metric("Shared Managers", len(shared))
 o2.metric(f"Only {fund_a}", len(result["only_a"]))
@@ -114,7 +114,7 @@ else:
     tbl["par_b"] = (tbl["par_b"] / 1e6).round(1)
     tbl["price_a"] = tbl["price_a"].round(1)
     tbl["price_b"] = tbl["price_b"].round(1)
-    tbl = tbl[["manager", "par_a", "price_a", "price_b", "par_b"]].rename(columns={
+    tbl = tbl[["manager", "par_a", "par_b", "price_a", "price_b"]].rename(columns={
         "manager": "Manager",
         "par_a": f"{fund_a} Par ($M)", "price_a": f"{fund_a} Price (¢)",
         "price_b": f"{fund_b} Price (¢)", "par_b": f"{fund_b} Par ($M)",
@@ -125,7 +125,7 @@ else:
 st.divider()
 st.subheader("Shared Deals")
 st.caption(
-    "Why might two funds mark the same deal differently? The **Cross-Fund Comparison** page "
+    "Why might two funds mark the same deal differently? The **Cross Fund** page "
     "explains each case — a different tranche (debt vs. equity) versus a genuine mark-to-model "
     "difference on the identical security."
 )
@@ -140,7 +140,7 @@ else:
     sd["par_b"] = (sd["par_b"] / 1e6).round(2)
     sd["price_a"] = sd["price_a"].round(1)
     sd["price_b"] = sd["price_b"].round(1)
-    sd = sd[["deal_name", "manager", "par_a", "price_a", "price_b", "par_b"]].rename(columns={
+    sd = sd[["deal_name", "manager", "par_a", "par_b", "price_a", "price_b"]].rename(columns={
         "deal_name": "Deal", "manager": "Manager",
         "par_a": f"{fund_a} Par ($M)", "price_a": f"{fund_a} Price (¢)",
         "price_b": f"{fund_b} Price (¢)", "par_b": f"{fund_b} Par ($M)",

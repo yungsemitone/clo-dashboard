@@ -116,7 +116,44 @@ def position_changes(pos: pd.DataFrame, fund: str, prev_date, curr_date) -> pd.D
             "facility_swap": bool(pa is not None and pb is not None and fac0 != fac1 and not (fac0 & fac1)),
             "prev_date": prev_date, "curr_date": curr_date,
         })
-    return pd.DataFrame(rows)
+    return attach_exit_types(pd.DataFrame(rows))
+
+
+def classify_loan_exit(row) -> str:
+    """Coarse, inferred exit bucket for an Exit or Trim; empty otherwise.
+
+    A full exit at ~par takes precedence over the detailed rotation read: it is
+    much more consistent with repayment/refinancing than a discretionary sale.
+    Near-maturity reductions use the same bucket. A facility swap means the
+    borrower remains but the facility was refinanced or repriced.
+    """
+    if row.get("action") not in ("Exit", "Trim"):
+        return ""
+    if row.get("facility_swap"):
+        return "Reset / refi"
+    px = row.get("price_prev") if row.get("action") == "Exit" else row.get("price_curr")
+    px = float(px) if px is not None and not pd.isna(px) else None
+    mat, ref = row.get("maturity"), row.get("curr_date")
+    yrs = ((pd.Timestamp(mat) - pd.Timestamp(ref)).days / 365.25
+           if mat is not None and not pd.isna(mat) and ref is not None else None)
+    if ((row.get("action") == "Exit" and px is not None and px >= PAR_PX)
+            or (yrs is not None and yrs < NEAR_MATURITY_YEARS)):
+        return "Call / repayment"
+    return "Sale"
+
+
+def attach_exit_types(changes: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy with the three-way coarse label on sell-side actions."""
+    out = changes.copy()
+    if "exit_type" in out:
+        out = out.drop(columns=["exit_type"])
+    if out.empty:
+        out["exit_type"] = pd.Series(dtype=str)
+        return out
+    labels = out.apply(classify_loan_exit, axis=1)
+    insert_at = out.columns.get_loc("action") + 1 if "action" in out else len(out.columns)
+    out.insert(insert_at, "exit_type", labels)
+    return out
 
 
 def latest_changes(pos: pd.DataFrame) -> pd.DataFrame:

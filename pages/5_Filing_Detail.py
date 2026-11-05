@@ -9,7 +9,7 @@ from datetime import datetime
 
 from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
-from src.ui import apply_chrome
+from src.ui import apply_chrome, page_intro
 
 import yaml
 from pathlib import Path
@@ -88,8 +88,8 @@ if st.button("← Back to Fund Profile"):
     st.switch_page("pages/4_Fund_Profiles.py")
 
 # --- Header ---
-st.title(f"📄 {fund.get('name', fund_ticker)}")
-st.caption(f"NPORT-P Filing — {detail_date.strftime('%B %d, %Y')}")
+page_intro(fund.get("name", fund_ticker), "Inspect one historical filing without mixing it with later holdings; the metrics and tables below all use this same filing date.", "📄")
+st.caption(f"NPORT-P filing · {detail_date.strftime('%B %d, %Y')}")
 
 st.divider()
 

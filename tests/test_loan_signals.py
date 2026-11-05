@@ -107,3 +107,30 @@ def test_opportunity_screen_scores_technical_selling():
     r = op.iloc[0]
     assert r.sellers == 3 and r.technical_score >= 6
     assert "discount-obligation" in r.signal_read
+
+
+@pytest.mark.parametrize("row,label", [
+    (dict(action="Exit", price_prev=100, facility_swap=False,
+          maturity=pd.Timestamp("2031-01-01"), curr_date=pd.Timestamp("2026-06-30")), "Call / repayment"),
+    (dict(action="Trim", price_curr=96, facility_swap=False,
+          maturity=pd.Timestamp("2026-10-31"), curr_date=pd.Timestamp("2026-06-30")), "Call / repayment"),
+    (dict(action="Trim", price_curr=99, facility_swap=True), "Reset / refi"),
+    (dict(action="Exit", price_prev=82, facility_swap=False,
+          maturity=pd.Timestamp("2031-01-01"), curr_date=pd.Timestamp("2026-06-30")), "Sale"),
+    (dict(action="Add", price_curr=82), ""),
+])
+def test_coarse_loan_exit_type(row, label):
+    assert ls.classify_loan_exit(row) == label
+
+
+def test_position_changes_includes_coarse_exit_types():
+    pos = _pos([
+        dict(fund="A", report_date="2026-03-31", obligor_key="repaid", par=100, price=100),
+        dict(fund="A", report_date="2026-03-31", obligor_key="sold", par=100, price=82),
+        dict(fund="A", report_date="2026-03-31", obligor_key="trimmed", par=100, price=99),
+        dict(fund="A", report_date="2026-06-30", obligor_key="trimmed", par=50, price=98),
+    ])
+    ch = ls.latest_changes(pos).set_index("obligor_key")
+    assert ch.loc["repaid", "exit_type"] == "Call / repayment"
+    assert ch.loc["sold", "exit_type"] == "Sale"
+    assert ch.loc["trimmed", "exit_type"] == "Sale"

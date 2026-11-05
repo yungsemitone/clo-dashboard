@@ -6,7 +6,7 @@ import plotly.express as px
 
 from src.db import init_db, get_session
 from src.models.schema import Deal, FundHolding
-from src.ui import apply_chrome
+from src.ui import apply_chrome, page_intro
 
 import yaml
 from pathlib import Path
@@ -29,7 +29,7 @@ def get_db():
 
 
 session = get_db()
-st.title("🏆 Manager Rankings")
+page_intro("Manager Rankings", "Compare CLO managers by portfolio footprint and average mark; use this as a screening view, not a performance league table.", "🏆")
 
 deals = session.query(Deal).all()
 holdings = session.query(FundHolding).all()
@@ -68,9 +68,11 @@ st.divider()
 
 # Leaderboard
 st.subheader("Manager Leaderboard")
+st.caption("Coverage ranking, not investment performance. All tracked filing snapshots are included, so this is an accumulated historical universe—not latest holdings. Average price = aggregate MV ÷ par; non-par instruments are not excluded here.")
 rank_col, _ = st.columns([2, 3])
 with rank_col:
-    sort_by = st.selectbox("Rank by", ["deals", "total_par_mm", "avg_price", "funds"])
+    sort_by = st.selectbox("Rank managers by", ["deals", "total_par_mm", "avg_price", "funds"],
+                       format_func={"deals": "Number of deals", "total_par_mm": "Reported par", "avg_price": "Average implied price", "funds": "Number of funds holding"}.get)
 ascending = sort_by == "avg_price"
 
 ranked = mgr_stats.sort_values(sort_by, ascending=ascending, na_position="last").reset_index(drop=True)
